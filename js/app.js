@@ -1009,75 +1009,90 @@ window.App = {
       return;
     }
 
-    const loader = document.getElementById("brand-match-loader");
     const container = document.getElementById("brand-match-results-container");
-
-    loader.style.display = "block";
     container.innerHTML = "";
 
     try {
-      await new Promise(resolve => setTimeout(resolve, 1500));
+      this.showPipelineProgressModal("Running Gemini AI Campaign Sourcing Matchmaker", [
+        { id: "wf04", name: "WF-04: Campaign Parse" },
+        { id: "wf05", name: "WF-05: Brand Match Engine" },
+        { id: "wf06", name: "WF-06: Pricing Recommendation Engine" }
+      ]);
 
-      const matches = await window.DB.getCampaignMatches(campaignId);
-      loader.style.display = "none";
-
-      if (!matches || matches.length === 0) {
-        container.innerHTML = `
-          <div class="glass-card" style="text-align: center; padding: 40px; border: 1px dashed var(--color-border); border-radius: 8px;">
-            <p class="view-subtitle" style="margin:0;">No matching creator profiles found in local registry.</p>
-          </div>
-        `;
-        return;
+      if (window.DB.isLive()) {
+        await window.N8N.triggerCampaignMatching(campaignId, (step, msg) => {
+          this.updatePipelineProgressStep(step, msg);
+        });
+      } else {
+        await new Promise(resolve => setTimeout(resolve, 500));
+        this.updatePipelineProgressStep("wf04", "Success");
+        await new Promise(resolve => setTimeout(resolve, 500));
+        this.updatePipelineProgressStep("wf05", "Success");
+        await new Promise(resolve => setTimeout(resolve, 500));
+        this.updatePipelineProgressStep("wf06", "Success");
       }
 
-      matches.forEach(m => {
-        const creator = m.creator;
-        if (!creator) return;
+      setTimeout(async () => {
+        this.closePipelineProgressModal();
+        const matches = await window.DB.getCampaignMatches(campaignId);
+        if (!matches || matches.length === 0) {
+          container.innerHTML = `
+            <div class="glass-card" style="text-align: center; padding: 40px; border: 1px dashed var(--color-border); border-radius: 8px;">
+              <p class="view-subtitle" style="margin:0;">No matching creator profiles found in registry.</p>
+            </div>
+          `;
+          return;
+        }
 
-        container.innerHTML += `
-          <div class="glass-card" style="padding: 24px; margin-bottom: 16px; border-left: 4px solid var(--color-primary-cyan); text-align: left;">
-            <div style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:16px;">
-              <div style="display:flex; gap:16px; align-items:center;">
-                <img src="${creator.avatar_url}" style="width:54px; height:54px; border-radius:50%; border:2px solid var(--color-primary-cyan);">
-                <div>
-                  <h3 style="margin:0; color:#fff; font-size:16px;">${creator.full_name} <span style="font-size:10px; color:var(--color-text-gray); font-weight:normal; margin-left:8px;">ID: ${creator.creator_code || 'CR_N/A'}</span></h3>
-                  <p style="margin:4px 0 0 0; font-size:12px; color:var(--color-text-gray);">
-                    Niche: <strong>${creator.categories ? creator.categories.join(', ') : 'General'}</strong> | Followers: <strong>${(creator.followers_count || 0).toLocaleString()}</strong>
-                  </p>
+        matches.forEach(m => {
+          const creator = m.creator;
+          if (!creator) return;
+
+          container.innerHTML += `
+            <div class="glass-card" style="padding: 24px; margin-bottom: 16px; border-left: 4px solid var(--color-primary-cyan); text-align: left;">
+              <div style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:16px;">
+                <div style="display:flex; gap:16px; align-items:center;">
+                  <img src="${creator.avatar_url}" style="width:54px; height:54px; border-radius:50%; border:2px solid var(--color-primary-cyan);">
+                  <div>
+                    <h3 style="margin:0; color:#fff; font-size:16px;">${creator.full_name} <span style="font-size:10px; color:var(--color-text-gray); font-weight:normal; margin-left:8px;">ID: ${creator.creator_code || 'CR_N/A'}</span></h3>
+                    <p style="margin:4px 0 0 0; font-size:12px; color:var(--color-text-gray);">
+                      Niche: <strong>${creator.categories ? creator.categories.join(', ') : 'General'}</strong> | Followers: <strong>${(creator.followers_count || 0).toLocaleString()}</strong>
+                    </p>
+                  </div>
+                </div>
+
+                <div style="text-align:right;">
+                  <div style="font-size:24px; font-weight:800; color:var(--color-primary-cyan);">${m.match_score}%</div>
+                  <div style="font-size:10px; color:var(--color-text-gray); text-transform:uppercase; font-weight:600; margin-top:2px;">AI Match Score</div>
                 </div>
               </div>
 
-              <div style="text-align:right;">
-                <div style="font-size:24px; font-weight:800; color:var(--color-primary-cyan);">${m.match_score}%</div>
-                <div style="font-size:10px; color:var(--color-text-gray); text-transform:uppercase; font-weight:600; margin-top:2px;">AI Match Score</div>
+              <div style="margin-top:16px; padding:12px; background:rgba(255,255,255,0.02); border-radius:8px;">
+                <div style="font-weight:600; font-size:12px; color:#fff; display:flex; align-items:center; gap:6px;">
+                  <span>🤖</span> Gemini Sourcing Explanation
+                </div>
+                <p style="margin:6px 0 0 0; font-size:11px; color:var(--color-text-gray); line-height:1.5;">
+                  ${m.ai_explanation || "High alignment based on dialect fluency and demographic overlap with Central Indian audience clusters."}
+                </p>
               </div>
-            </div>
 
-            <div style="margin-top:16px; padding:12px; background:rgba(255,255,255,0.02); border-radius:8px;">
-              <div style="font-weight:600; font-size:12px; color:#fff; display:flex; align-items:center; gap:6px;">
-                <span>🤖</span> Gemini Sourcing Explanation
-              </div>
-              <p style="margin:6px 0 0 0; font-size:11px; color:var(--color-text-gray); line-height:1.5;">
-                ${m.ai_explanation || "High alignment based on dialect fluency and demographic overlap with Central Indian audience clusters."}
-              </p>
-            </div>
-
-            <div style="margin-top:16px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px;">
-              <div style="font-size:12px; color:var(--color-text-gray);">
-                Recommended Pricing Index: <strong style="color:#00F2A6;">₹${(creator.pricing_min || 10000).toLocaleString('en-IN')} - ₹${(creator.pricing_premium || 20000).toLocaleString('en-IN')}</strong>
-              </div>
-              <div style="display:flex; gap:10px;">
-                <button class="btn btn-tertiary" style="padding:6px 12px; font-size:11px;" onclick="App.showToast('Creator profile saved to matches!')">Save Creator</button>
-                <button class="btn btn-primary" style="padding:6px 12px; font-size:11px;" onclick="App.expressBrandInterest('${creator.id}', '${campaignId}', ${m.match_score}, ${creator.pricing_min || 10000})">Express Interest</button>
+              <div style="margin-top:16px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px;">
+                <div style="font-size:12px; color:var(--color-text-gray);">
+                  Recommended Pricing Index: <strong style="color:#00F2A6;">₹${(creator.pricing_min || 10000).toLocaleString('en-IN')} - ₹${(creator.pricing_premium || 20000).toLocaleString('en-IN')}</strong>
+                </div>
+                <div style="display:flex; gap:10px;">
+                  <button class="btn btn-tertiary" style="padding:6px 12px; font-size:11px;" onclick="App.showToast('Creator profile saved to matches!')">Save Creator</button>
+                  <button class="btn btn-primary" style="padding:6px 12px; font-size:11px;" onclick="App.expressBrandInterest('${creator.id}', '${campaignId}', ${m.match_score}, ${creator.pricing_min || 10000})">Express Interest</button>
+                </div>
               </div>
             </div>
-          </div>
-        `;
-      });
+          `;
+        });
+      }, 1000);
 
     } catch (e) {
-      loader.style.display = "none";
-      this.showToast(e.message, "error");
+      this.closePipelineProgressModal();
+      this.showToast("Matching pipeline failed: " + e.message, "error");
     }
   },
 
