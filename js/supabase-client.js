@@ -1,11 +1,12 @@
-// Supabase Database Adapter (Dual-Mode: Local Demo State vs. Live Supabase API)
+// Supabase Database Adapter (Dual-Mode: Local Demo State vs. REST API Backend)
 
 window.DB = {
+  // Backend URL configuration
+  backendUrl: "http://localhost:5000/api",
+
   // Check if live config is set
   isLive: function() {
-    return localStorage.getItem("cl_use_live") === "true" &&
-           !!localStorage.getItem("cl_supabase_url") &&
-           !!localStorage.getItem("cl_supabase_key");
+    return localStorage.getItem("cl_use_live") === "true";
   },
 
   // Initialize data stores on load
@@ -49,58 +50,54 @@ window.DB = {
     if (!localStorage.getItem("cl_collabs")) {
       localStorage.setItem("cl_collabs", JSON.stringify([]));
     }
-
-    // Try loading Supabase live client if active
-    if (this.isLive()) {
-      this.loadSupabaseScript();
-    }
   },
 
+  // Compatibility placeholder for UI settings verify loader
   loadSupabaseScript: function() {
-    if (window.supabase) return Promise.resolve();
-    return new Promise((resolve, reject) => {
-      const script = document.createElement("script");
-      script.src = "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2";
-      script.onload = () => {
-        const url = localStorage.getItem("cl_supabase_url");
-        const key = localStorage.getItem("cl_supabase_key");
-        try {
-          window.supabaseClient = window.supabase.createClient(url, key);
-          resolve();
-        } catch (e) {
-          console.error("Failed to init live Supabase Client:", e);
-          reject(e);
-        }
-      };
-      script.onerror = reject;
-      document.head.appendChild(script);
+    return Promise.resolve();
+  },
+
+  // Helper method for REST API requests
+  request: async function(endpoint, options = {}) {
+    const url = `${this.backendUrl}/${endpoint}`;
+    
+    // Set headers
+    const headers = {
+      "Content-Type": "application/json",
+      ...(options.headers || {})
+    };
+    
+    // Add auth token if available
+    const token = localStorage.getItem("cl_auth_token");
+    if (token) {
+      headers["Authorization"] = `Bearer ${token}`;
+    }
+
+    const response = await fetch(url, {
+      ...options,
+      headers
     });
+
+    if (!response.ok) {
+      let errorMessage = "Request failed";
+      try {
+        const errorData = await response.json();
+        errorMessage = errorData.message || errorData.error || errorMessage;
+      } catch (e) {}
+      throw new Error(errorMessage);
+    }
+
+    return await response.json();
   },
 
   // Auth Operations
   register: async function(email, password, role) {
     if (this.isLive()) {
-      await this.loadSupabaseScript();
-      const { data, error } = await window.supabaseClient.auth.signUp({ email, password });
-      if (error) throw error;
-      
-      const user = data.user;
-      
-      // Save role profile into custom users table
-      const { error: dbError } = await window.supabaseClient
-        .from("users")
-        .insert([{ id: user.id, email, role }]);
-      
-      if (dbError) throw dbError;
-      
-      // Initialize profile tables
-      if (role === "creator") {
-        await window.supabaseClient.from("creators").insert([{ id: user.id, full_name: email.split("@")[0] }]);
-      } else if (role === "brand") {
-        await window.supabaseClient.from("brands").insert([{ id: user.id, company_name: email.split("@")[0] }]);
-      }
-      
-      return { id: user.id, email, role };
+      const data = await this.request("auth/register", {
+        method: "POST",
+        body: JSON.stringify({ email, password, role })
+      });
+      return data.user;
     } else {
       // Local Registration
       const users = JSON.parse(localStorage.getItem("cl_users") || "[]");
@@ -148,22 +145,14 @@ window.DB = {
 
   login: async function(email, password) {
     if (this.isLive()) {
-      await this.loadSupabaseScript();
-      const { data, error } = await window.supabaseClient.auth.signInWithPassword({ email, password });
-      if (error) throw error;
-      
-      const user = data.user;
-      
-      // Fetch role details
-      const { data: userData, error: dbError } = await window.supabaseClient
-        .from("users")
-        .select("role")
-        .eq("id", user.id)
-        .single();
-        
-      if (dbError) throw dbError;
-      
-      return { id: user.id, email, role: userData.role };
+      const data = await this.request("auth/login", {
+        method: "POST",
+        body: JSON.stringify({ email, password })
+      });
+      if (data.token) {
+        localStorage.setItem("cl_auth_token", data.token);
+      }
+      return data.user;
     } else {
       // Local Auth Match
       const users = JSON.parse(localStorage.getItem("cl_users") || "[]");
@@ -178,14 +167,8 @@ window.DB = {
   // Profile management
   getProfile: async function(userId, role) {
     if (this.isLive()) {
-      const table = role === "creator" ? "creators" : "brands";
-      const { data, error } = await window.supabaseClient
-        .from(table)
-        .select("*")
-        .eq("id", userId)
-        .single();
-      if (error) throw error;
-      return data;
+      const route = role === "creator" ? "creators" : "brands";
+      return await this.request(`${route}/profile/${userId}`);
     } else {
       if (role === "creator") {
         const creators = JSON.parse(localStorage.getItem("cl_creators") || "[]");
@@ -199,15 +182,12 @@ window.DB = {
 
   saveProfile: async function(userId, role, profileData) {
     if (this.isLive()) {
-      const table = role === "creator" ? "creators" : "brands";
-      const { data, error } = await window.supabaseClient
-        .from(table)
-        .update(profileData)
-        .eq("id", userId)
-        .select()
-        .single();
-      if (error) throw error;
-      return data;
+      const route = role === "creator" ? "creators" : "brands";
+      const data = await this.request(`${route}/profile`, {
+        method: "POST",
+        body: JSON.stringify({ id: userId, ...profileData })
+      });
+      return data.profile;
     } else {
       if (role === "creator") {
         const creators = JSON.parse(localStorage.getItem("cl_creators") || "[]");
@@ -229,13 +209,13 @@ window.DB = {
   // Scoring Operations
   getCreatorScores: async function(creatorId) {
     if (this.isLive()) {
-      const { data, error } = await window.supabaseClient
-        .from("creator_scores")
-        .select("*")
-        .eq("creator_id", creatorId)
-        .single();
-      if (error && error.code !== "PGRST116") throw error; // PGRST116 is empty row
-      return data;
+      try {
+        const data = await this.request(`creators/dashboard/${creatorId}`);
+        return data.scores;
+      } catch (err) {
+        console.error("Failed to fetch creator scores:", err);
+        return null;
+      }
     } else {
       const scores = JSON.parse(localStorage.getItem("cl_scores") || "{}");
       return scores[creatorId] || null;
@@ -244,12 +224,13 @@ window.DB = {
 
   getSuggestions: async function(creatorId) {
     if (this.isLive()) {
-      const { data, error } = await window.supabaseClient
-        .from("creator_ai_suggestions")
-        .select("*")
-        .eq("creator_id", creatorId);
-      if (error) throw error;
-      return data;
+      try {
+        const data = await this.request(`creators/dashboard/${creatorId}`);
+        return data.suggestions;
+      } catch (err) {
+        console.error("Failed to fetch creator suggestions:", err);
+        return [];
+      }
     } else {
       const sugg = JSON.parse(localStorage.getItem("cl_suggestions") || "{}");
       return sugg[creatorId] || [];
@@ -259,13 +240,11 @@ window.DB = {
   // Campaign management
   createCampaign: async function(campaignData) {
     if (this.isLive()) {
-      const { data, error } = await window.supabaseClient
-        .from("campaigns")
-        .insert([campaignData])
-        .select()
-        .single();
-      if (error) throw error;
-      return data;
+      const data = await this.request("campaigns", {
+        method: "POST",
+        body: JSON.stringify(campaignData)
+      });
+      return data.campaign;
     } else {
       const campaigns = JSON.parse(localStorage.getItem("cl_campaigns") || "[]");
       const id = "camp-" + Math.random().toString(36).substr(2, 9);
@@ -278,12 +257,7 @@ window.DB = {
 
   getCampaigns: async function(brandId) {
     if (this.isLive()) {
-      const { data, error } = await window.supabaseClient
-        .from("campaigns")
-        .select("*")
-        .eq("brand_id", brandId);
-      if (error) throw error;
-      return data;
+      return await this.request(`campaigns?brand_id=${brandId}`);
     } else {
       const campaigns = JSON.parse(localStorage.getItem("cl_campaigns") || "[]");
       return campaigns.filter(c => c.brand_id === brandId);
@@ -292,9 +266,7 @@ window.DB = {
 
   getAllCampaigns: async function() {
     if (this.isLive()) {
-      const { data, error } = await window.supabaseClient.from("campaigns").select("*");
-      if (error) throw error;
-      return data;
+      return await this.request("campaigns");
     } else {
       return JSON.parse(localStorage.getItem("cl_campaigns") || "[]");
     }
@@ -303,14 +275,10 @@ window.DB = {
   // Match management
   getCampaignMatches: async function(campaignId) {
     if (this.isLive()) {
-      const { data, error } = await window.supabaseClient
-        .from("campaign_matches")
-        .select("*, creators(*)")
-        .eq("campaign_id", campaignId);
-      if (error) throw error;
-      return data.map(m => ({
+      const matches = await this.request(`campaigns/${campaignId}/matches`);
+      return matches.map(m => ({
         ...m,
-        creator: m.creators // map naming
+        creator: m.creator // structured mapping from join
       }));
     } else {
       const matches = JSON.parse(localStorage.getItem("cl_matches") || "[]");
@@ -327,13 +295,11 @@ window.DB = {
   // Collaboration request trackers
   saveCollabRequest: async function(request) {
     if (this.isLive()) {
-      const { data, error } = await window.supabaseClient
-        .from("collaboration_requests")
-        .insert([request])
-        .select()
-        .single();
-      if (error) throw error;
-      return data;
+      const data = await this.request("collaborations", {
+        method: "POST",
+        body: JSON.stringify(request)
+      });
+      return data.collaboration;
     } else {
       const collabs = JSON.parse(localStorage.getItem("cl_collabs") || "[]");
       const id = "collab-" + Math.random().toString(36).substr(2, 9);
@@ -346,12 +312,13 @@ window.DB = {
 
   getCollabsForCreator: async function(creatorId) {
     if (this.isLive()) {
-      const { data, error } = await window.supabaseClient
-        .from("collaboration_requests")
-        .select("*, campaigns(*), brands(*)")
-        .eq("creator_id", creatorId);
-      if (error) throw error;
-      return data;
+      try {
+        const data = await this.request(`creators/dashboard/${creatorId}`);
+        return data.requests;
+      } catch (err) {
+        console.error("Failed to fetch creator collabs:", err);
+        return [];
+      }
     } else {
       const collabs = JSON.parse(localStorage.getItem("cl_collabs") || "[]");
       const campaigns = JSON.parse(localStorage.getItem("cl_campaigns") || "[]");
@@ -368,14 +335,11 @@ window.DB = {
 
   updateCollabStatus: async function(collabId, status) {
     if (this.isLive()) {
-      const { data, error } = await window.supabaseClient
-        .from("collaboration_requests")
-        .update({ status })
-        .eq("id", collabId)
-        .select()
-        .single();
-      if (error) throw error;
-      return data;
+      const data = await this.request(`collaborations/${collabId}`, {
+        method: "PATCH",
+        body: JSON.stringify({ status })
+      });
+      return data.collaboration;
     } else {
       const collabs = JSON.parse(localStorage.getItem("cl_collabs") || "[]");
       const idx = collabs.findIndex(c => c.id === collabId);

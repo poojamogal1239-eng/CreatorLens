@@ -454,8 +454,6 @@
                 <label class="input-label" for="auth-otp">ONE TIME PASSWORD (OTP)</label>
                 <input type="text" id="auth-otp" class="input-field" placeholder="Enter 6-digit OTP code">
               </div>
-              
-              -- Registration Role selector (hidden in login)
               <div class="input-group" id="reg-role-group" style="display: none;">
                 <label class="input-label">I AM REGISTERING AS A:</label>
                 <div class="custom-select" id="custom-role-select">
@@ -1058,7 +1056,7 @@
         <div class="view-header">
           <div>
             <h1 class="view-title">Integration & Settings</h1>
-            <p class="view-subtitle">Connect real Supabase and n8n pipelines.</p>
+            <p class="view-subtitle">Toggle between Local Demo Mode and the Live Backend REST API.</p>
           </div>
         </div>
         
@@ -1067,36 +1065,10 @@
             <h3 class="settings-section-title">INTEGRATION MODE</h3>
             <div class="input-group">
               <label class="input-label" for="setting-mode-select">CHOOSE ACTIVE ENGINE</label>
-              <select id="setting-mode-select" class="input-field" onchange="App.handleModeChange()">
+              <select id="setting-mode-select" class="input-field">
                 <option value="demo">Interactive Demo Mode (Local state storage)</option>
-                <option value="live">Live Integration Mode (Supabase Auth/DB + n8n Webhooks)</option>
+                <option value="live">Live Integration Mode (Express REST API Backend on Port 5000)</option>
               </select>
-            </div>
-          </div>
-          
-          <div id="live-settings-inputs" style="display: none;">
-            <div class="settings-section">
-              <h3 class="settings-section-title">SUPABASE BACKEND CREDENTIALS</h3>
-              <div class="input-group">
-                <label class="input-label">SUPABASE URL</label>
-                <input type="text" id="set-sb-url" class="input-field" placeholder="https://xyz.supabase.co">
-              </div>
-              <div class="input-group">
-                <label class="input-label">PUBLIC ANON KEY</label>
-                <input type="password" id="set-sb-key" class="input-field" placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...">
-              </div>
-            </div>
-            
-            <div class="settings-section">
-              <h3 class="settings-section-title">n8n AI WORKFLOW WEBHOOKS</h3>
-              <div class="input-group">
-                <label class="input-label">CREATOR PROFILE WEBHOOK (WF-01)</label>
-                <input type="text" id="set-n8n-profile" class="input-field" placeholder="https://n8n.domain.com/webhook/creator-profile-analysis">
-              </div>
-              <div class="input-group">
-                <label class="input-label">CAMPAIGN ANALYZER WEBHOOK (WF-04)</label>
-                <input type="text" id="set-n8n-campaign" class="input-field" placeholder="https://n8n.domain.com/webhook/campaign-analysis">
-              </div>
             </div>
           </div>
           

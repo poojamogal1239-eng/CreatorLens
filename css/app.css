@@ -1278,3 +1278,18 @@
   border-color: var(--color-primary-cyan) !important;
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6), 0 0 15px rgba(0, 212, 255, 0.12) !important;
 }
+
+/* Active state overrides for pseudo-elements inside clickable luxury cards */
+.clickable-card.active-card::before {
+  background: var(--color-primary-cyan) !important;
+  animation: none !important;
+}
+
+.clickable-card.active-card::after {
+  background: #081720 !important; /* Distinct dark teal background */
+}
+
+.clickable-card.active-card h4 {
+  color: var(--color-primary-cyan) !important; /* Glow category title text */
+}
+

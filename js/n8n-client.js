@@ -1,34 +1,35 @@
 // n8n AI Workflow Client adapter (Dual-Mode: Real Webhooks vs. Simulated Client-Side Pipeline)
 
 window.N8N = {
+  backendUrl: "http://localhost:5000/api",
+
   isLive: function() {
-    return localStorage.getItem("cl_use_live") === "true" &&
-           !!localStorage.getItem("cl_n8n_url_profile") &&
-           !!localStorage.getItem("cl_n8n_url_campaign");
+    return localStorage.getItem("cl_use_live") === "true";
   },
 
   // 1. Creator Onboarding pipeline (WF-01 ➔ WF-02 ➔ WF-03)
   triggerProfileEnrichment: async function(creatorId, onStepUpdate) {
     if (this.isLive()) {
-      // Live integration via webhook
-      const webhookUrl = localStorage.getItem("cl_n8n_url_profile");
-      if (onStepUpdate) onStepUpdate("trigger", "Triggering Live n8n enrichment...");
+      if (onStepUpdate) onStepUpdate("trigger", "Triggering Live n8n enrichment via Backend...");
       
       try {
-        const response = await fetch(webhookUrl, {
+        const response = await fetch(`${this.backendUrl}/creators/enrich`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ creator_id: creatorId })
         });
         
-        if (!response.ok) throw new Error(`Webhook failed: ${response.statusText}`);
-        const data = await response.json();
+        if (!response.ok) {
+          const errData = await response.json();
+          throw new Error(errData.message || response.statusText);
+        }
         
+        const data = await response.json();
         if (onStepUpdate) onStepUpdate("success", "Live Profile Enrichment Complete!");
         return data;
       } catch (err) {
         console.error("n8n profile enrichment webhook error:", err);
-        if (onStepUpdate) onStepUpdate("error", "n8n error: " + err.message);
+        if (onStepUpdate) onStepUpdate("error", "Enrichment error: " + err.message);
         throw err;
       }
     } else {
@@ -49,9 +50,9 @@ window.N8N = {
       const updatedProfile = {
         is_enriched: true,
         profile_summary: `${creator.full_name} is a rising regional influencer. Renders high-relevance posts focusing on ${creator.categories.join(" and ")} niches. Shows deep demographic trust and regional affinity within ${creator.regions.join("/")}.`,
-        strengths: creator.strengths.length ? creator.strengths : ["Direct local language communication", "Authentic lifestyle representation"],
-        weaknesses: creator.weaknesses.length ? creator.weaknesses : ["Low multi-platform cross-posting"],
-        missing_info: creator.missing_info.length ? creator.missing_info : ["Detailed monthly click-through ratios"],
+        strengths: creator.strengths && creator.strengths.length ? creator.strengths : ["Direct local language communication", "Authentic lifestyle representation"],
+        weaknesses: creator.weaknesses && creator.weaknesses.length ? creator.weaknesses : ["Low multi-platform cross-posting"],
+        missing_info: creator.missing_info && creator.missing_info.length ? creator.missing_info : ["Detailed monthly click-through ratios"],
         profile_completeness: Math.min(100, (creator.profile_completeness || 10) + 15)
       };
       
@@ -64,7 +65,6 @@ window.N8N = {
       
       // Calculate scores dynamically based on stats
       const baseEngagement = creator.engagement_rate || 5.0;
-      const baseFollowers = creator.followers_count || 10000;
       
       const trust = Math.min(100, Math.round(75 + baseEngagement * 2));
       const engagement = Math.min(100, Math.round(60 + baseEngagement * 4));
@@ -128,24 +128,25 @@ window.N8N = {
   // 2. Campaign creation pipeline (WF-04 ➔ WF-05 ➔ WF-06)
   triggerCampaignMatching: async function(campaignId, onStepUpdate) {
     if (this.isLive()) {
-      const webhookUrl = localStorage.getItem("cl_n8n_url_campaign");
-      if (onStepUpdate) onStepUpdate("trigger", "Triggering Live n8n matching...");
+      if (onStepUpdate) onStepUpdate("trigger", "Triggering Live n8n matching via Backend...");
       
       try {
-        const response = await fetch(webhookUrl, {
+        const response = await fetch(`${this.backendUrl}/campaigns/${campaignId}/match`, {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ campaign_id: campaignId })
+          headers: { "Content-Type": "application/json" }
         });
         
-        if (!response.ok) throw new Error(`Webhook failed: ${response.statusText}`);
-        const data = await response.json();
+        if (!response.ok) {
+          const errData = await response.json();
+          throw new Error(errData.message || response.statusText);
+        }
         
+        const data = await response.json();
         if (onStepUpdate) onStepUpdate("success", "Live Campaign Sourcing Complete!");
         return data;
       } catch (err) {
         console.error("n8n campaign matching webhook error:", err);
-        if (onStepUpdate) onStepUpdate("error", "n8n error: " + err.message);
+        if (onStepUpdate) onStepUpdate("error", "Matching error: " + err.message);
         throw err;
       }
     } else {

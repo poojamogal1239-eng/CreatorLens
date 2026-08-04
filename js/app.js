@@ -978,18 +978,10 @@ window.App = {
   loadSettings: function() {
     const isLive = localStorage.getItem("cl_use_live") === "true";
     document.getElementById("setting-mode-select").value = isLive ? "live" : "demo";
-    
-    document.getElementById("set-sb-url").value = localStorage.getItem("cl_supabase_url") || "";
-    document.getElementById("set-sb-key").value = localStorage.getItem("cl_supabase_key") || "";
-    document.getElementById("set-n8n-profile").value = localStorage.getItem("cl_n8n_url_profile") || "";
-    document.getElementById("set-n8n-campaign").value = localStorage.getItem("cl_n8n_url_campaign") || "";
-    
-    document.getElementById("live-settings-inputs").style.display = isLive ? "block" : "none";
   },
 
   handleModeChange: function() {
-    const select = document.getElementById("setting-mode-select").value;
-    document.getElementById("live-settings-inputs").style.display = select === "live" ? "block" : "none";
+    // No-op since credentials input container is removed
   },
 
   saveIntegrationSettings: function() {
@@ -999,20 +991,8 @@ window.App = {
     localStorage.setItem("cl_use_live", isLive ? "true" : "false");
     
     if (isLive) {
-      localStorage.setItem("cl_supabase_url", document.getElementById("set-sb-url").value.trim());
-      localStorage.setItem("cl_supabase_key", document.getElementById("set-sb-key").value.trim());
-      localStorage.setItem("cl_n8n_url_profile", document.getElementById("set-n8n-profile").value.trim());
-      localStorage.setItem("cl_n8n_url_campaign", document.getElementById("set-n8n-campaign").value.trim());
-      
-      // Load Supabase Client
-      window.DB.loadSupabaseScript()
-        .then(() => {
-          this.showToast("Live Supabase engine connected successfully!");
-          this.adminLog("[SYS] Switched to LIVE Integration Engine.");
-        })
-        .catch(err => {
-          this.showToast("Failed to initialize Live Supabase: " + err.message, "error");
-        });
+      this.showToast("Switched to LIVE Backend Integration Engine (Port 5000)!");
+      this.adminLog("[SYS] Switched to LIVE Backend REST API Engine.");
     } else {
       this.showToast("Switched to interactive local demo mode.");
       this.adminLog("[SYS] Switched to LOCAL Demo Engine.");
@@ -1600,9 +1580,8 @@ window.App = {
     
     catContainer.innerHTML = categoriesList.map(cat => {
       const active = this.selectedCategories.includes(cat.id) ? "active-card" : "";
-      const border = this.selectedCategories.includes(cat.id) ? "border: 1px solid var(--color-primary-cyan);" : "border: 1px solid var(--color-border);";
       return `
-        <div class="col-6 luxury-card clickable-card ${active}" data-cat="${cat.id}" onclick="App.toggleCategoryCard(this, '${cat.id}')" style="padding:16px; text-align:left; cursor:pointer; user-select:none; ${border} box-sizing:border-box;">
+        <div class="col-6 luxury-card clickable-card ${active}" data-cat="${cat.id}" onclick="App.toggleCategoryCard(this, '${cat.id}')" style="padding:16px; text-align:left; cursor:pointer; user-select:none; box-sizing:border-box;">
           <h4 style="margin: 0 0 6px 0; font-size:14px; color:#fff;">${cat.label}</h4>
           <p class="view-subtitle" style="font-size:11px; margin:0; line-height:1.4;">${cat.desc}</p>
         </div>
@@ -1628,11 +1607,9 @@ window.App = {
     if (App.selectedCategories.includes(catId)) {
       App.selectedCategories = App.selectedCategories.filter(c => c !== catId);
       el.classList.remove("active-card");
-      el.style.borderColor = "var(--color-border)";
     } else {
       App.selectedCategories.push(catId);
       el.classList.add("active-card");
-      el.style.borderColor = "var(--color-primary-cyan)";
     }
   },
 
