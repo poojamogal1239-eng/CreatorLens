@@ -699,8 +699,8 @@
           <div style="position: relative; display: inline-block;" class="user-dropdown-wrapper">
             <img src="https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150" id="top-nav-avatar" style="width: 32px; height: 32px; border-radius: 50%; border: 1.5px solid var(--color-primary-cyan); cursor: pointer;" onclick="App.toggleUserDropdown()">
             <div id="top-nav-user-dropdown" style="display: none; position: absolute; right: 0; top: 40px; background: #0c1820; border: 1px solid var(--color-border); border-radius: 8px; width: 160px; box-shadow: 0 10px 25px rgba(0,0,0,0.5); z-index: 999; overflow: hidden;">
-              <a onclick="App.switchSubview('creator-profile-mgmt')" style="display: block; padding: 10px 16px; font-size: 12px; color: #fff; cursor: pointer; text-decoration: none; border-bottom: 1px solid var(--color-border);">My Profile</a>
-              <a onclick="App.switchSubview('creator-settings')" style="display: block; padding: 10px 16px; font-size: 12px; color: #fff; cursor: pointer; text-decoration: none; border-bottom: 1px solid var(--color-border);">Account Settings</a>
+              <a onclick="App.handleProfileMenuClick()" style="display: block; padding: 10px 16px; font-size: 12px; color: #fff; cursor: pointer; text-decoration: none; border-bottom: 1px solid var(--color-border);">My Profile</a>
+              <a onclick="App.handleSettingsMenuClick()" style="display: block; padding: 10px 16px; font-size: 12px; color: #fff; cursor: pointer; text-decoration: none; border-bottom: 1px solid var(--color-border);">Account Settings</a>
               <a onclick="App.switchSubview('notifications')" style="display: block; padding: 10px 16px; font-size: 12px; color: #fff; cursor: pointer; text-decoration: none; border-bottom: 1px solid var(--color-border);">Help & Support</a>
               <a onclick="App.handleLogout()" style="display: block; padding: 10px 16px; font-size: 12px; color: #ff453a; cursor: pointer; text-decoration: none;">Logout</a>
             </div>
@@ -987,7 +987,124 @@
         </div>
       </section>
       
-      <!-- ==================== SUB-VIEW: BRAND DASHBOARD & CAMPAIGNS ==================== -->
+      <!-- ==================== SUB-VIEW: BRAND DASHBOARD ==================== -->
+      <section id="subview-brand-dashboard" class="subview" style="display: none;">
+        <!-- Quick Actions Row -->
+        <div class="dashboard-grid" style="margin-bottom: 24px; gap: 16px;">
+          <div class="col-3 glass-card clickable-card" onclick="App.switchSubview('brand-campaigns')" style="display: flex; align-items: center; gap: 12px; padding: 16px; box-sizing: border-box;">
+            <div style="font-size: 24px; background: rgba(0, 242, 166, 0.1); padding: 8px; border-radius: 8px;">➕</div>
+            <div>
+              <h4 style="margin: 0; font-size: 13px; color: #fff;">Create Campaign</h4>
+              <p style="margin: 2px 0 0 0; font-size: 10px; color: var(--color-text-gray);">Deploy a new brief</p>
+            </div>
+          </div>
+          <div class="col-3 glass-card clickable-card" onclick="App.switchSubview('brand-ai-match')" style="display: flex; align-items: center; gap: 12px; padding: 16px; box-sizing: border-box;">
+            <div style="font-size: 24px; background: rgba(0, 212, 255, 0.1); padding: 8px; border-radius: 8px;">🤖</div>
+            <div>
+              <h4 style="margin: 0; font-size: 13px; color: #fff;">Find AI Matches</h4>
+              <p style="margin: 2px 0 0 0; font-size: 10px; color: var(--color-text-gray);">Calculate creator pairings</p>
+            </div>
+          </div>
+          <div class="col-3 glass-card clickable-card" onclick="App.switchSubview('brand-insights')" style="display: flex; align-items: center; gap: 12px; padding: 16px; box-sizing: border-box;">
+            <div style="font-size: 24px; background: rgba(79, 70, 229, 0.1); padding: 8px; border-radius: 8px;">📈</div>
+            <div>
+              <h4 style="margin: 0; font-size: 13px; color: #fff;">Campaign Insights</h4>
+              <p style="margin: 2px 0 0 0; font-size: 10px; color: var(--color-text-gray);">Measure ROI metrics</p>
+            </div>
+          </div>
+          <div class="col-3 glass-card clickable-card" onclick="App.switchSubview('brand-search')" style="display: flex; align-items: center; gap: 12px; padding: 16px; box-sizing: border-box;">
+            <div style="font-size: 24px; background: rgba(251, 191, 36, 0.1); padding: 8px; border-radius: 8px;">👥</div>
+            <div>
+              <h4 style="margin: 0; font-size: 13px; color: #fff;">Browse Creators</h4>
+              <p style="margin: 2px 0 0 0; font-size: 10px; color: var(--color-text-gray);">Search creator database</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- KPIs row -->
+        <div class="dashboard-grid" style="margin-bottom: 24px; gap: 16px;">
+          <div class="col-4 glass-card stat-card" style="display:flex; align-items:center; gap:16px; box-sizing:border-box; padding:20px;">
+            <div class="stat-icon-wrapper stat-icon-green" style="font-size:24px;">📢</div>
+            <div>
+              <div class="stat-num" id="brand-stat-active-camps">0</div>
+              <div class="stat-label">ACTIVE CAMPAIGNS</div>
+            </div>
+          </div>
+          <div class="col-4 glass-card stat-card" style="display:flex; align-items:center; gap:16px; box-sizing:border-box; padding:20px;">
+            <div class="stat-icon-wrapper stat-icon-cyan" style="font-size:24px;">🤝</div>
+            <div>
+              <div class="stat-num" id="brand-stat-active-collabs">0</div>
+              <div class="stat-label">ACTIVE COLLABORATIONS</div>
+            </div>
+          </div>
+          <div class="col-4 glass-card stat-card" style="display:flex; align-items:center; gap:16px; box-sizing:border-box; padding:20px;">
+            <div class="stat-icon-wrapper stat-icon-indigo" style="font-size:24px;">₹</div>
+            <div>
+              <div class="stat-num" id="brand-stat-total-budget">₹0</div>
+              <div class="stat-label">BUDGET ALLOCATED</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="dashboard-grid" style="gap: 16px; margin-bottom: 24px;">
+          <!-- Left: Campaign Overview List -->
+          <div class="col-8 glass-card">
+            <h3 style="margin-top:0; color:#fff; font-size:15px;">Active Campaigns Pipeline</h3>
+            <p class="view-subtitle" style="margin-bottom: 20px;">Overview of live marketing campaign briefs and matching metrics.</p>
+            <div style="overflow-x: auto;">
+              <table style="width: 100%; border-collapse: collapse; text-align: left; font-size:13px;">
+                <thead>
+                  <tr style="border-bottom: 1px solid var(--color-border); color: var(--color-text-muted);">
+                    <th style="padding: 12px 8px;">CAMPAIGN</th>
+                    <th style="padding: 12px 8px;">NICHE</th>
+                    <th style="padding: 12px 8px;">BUDGET</th>
+                    <th style="padding: 12px 8px;">MATCHES</th>
+                    <th style="padding: 12px 8px;">STATUS</th>
+                  </tr>
+                </thead>
+                <tbody id="brand-dashboard-camps-body">
+                  <!-- Injected via JS -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Right: AI Match Summary -->
+          <div class="col-4 glass-card" style="display:flex; flex-direction:column; justify-content:space-between; box-sizing:border-box; padding:20px;">
+            <h3 style="margin-top:0; color:#fff; font-size:15px;">AI Match Summary</h3>
+            <div style="text-align: center; padding: 20px 0;">
+              <div style="font-size:48px; margin-bottom: 10px;">🤖</div>
+              <div style="font-size: 24px; font-weight:700; color:#fff;" id="brand-ai-avg-match">0%</div>
+              <p style="font-size: 11px; color: var(--color-text-gray); margin-top:6px;">Average compatibility across sourced recommendations</p>
+            </div>
+            <div style="border-top: 1px solid var(--color-border); padding-top: 12px; font-size: 11px; color: var(--color-text-gray); line-height: 1.4;">
+              💡 <strong>AI Recommendation:</strong> Target regional micro-influencers in Indore/Pune niche for 12% higher engagement returns.
+            </div>
+          </div>
+        </div>
+
+        <div class="dashboard-grid" style="gap: 16px;">
+          <!-- AI Recommendations List -->
+          <div class="col-6 glass-card">
+            <h3 style="margin-top:0; color:#fff; font-size:15px;">AI Recommendations Plan</h3>
+            <p class="view-subtitle" style="margin-bottom: 20px;">Recommended strategic targets parsed by Gemini AI matching agents.</p>
+            <div id="brand-dashboard-recommendations" style="display:flex; flex-direction:column; gap:12px;">
+              <!-- Injected via JS -->
+            </div>
+          </div>
+
+          <!-- Recent Activity -->
+          <div class="col-6 glass-card">
+            <h3 style="margin-top:0; color:#fff; font-size:15px;">Recent Platform Activity</h3>
+            <p class="view-subtitle" style="margin-bottom: 20px;">Timeline of creator applications, matching alerts, and invites.</p>
+            <div id="brand-dashboard-activity" style="display:flex; flex-direction:column; gap:10px;">
+              <!-- Injected via JS -->
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ==================== SUB-VIEW: BRAND CAMPAIGNS ==================== -->
       <section id="subview-brand-campaigns" class="subview" style="display: none;">
         <div class="view-header">
           <div>
@@ -1065,7 +1182,130 @@
           </div>
         </div>
       </section>
-      
+
+      <!-- ==================== SUB-VIEW: BRAND AI CREATOR MATCH ==================== -->
+      <section id="subview-brand-ai-match" class="subview" style="display: none;">
+        <div class="view-header">
+          <div>
+            <h1 class="view-title">AI Creator Matching</h1>
+            <p class="view-subtitle">Select a campaign brief and let Gemini AI match the most optimal creator profiles from Supabase.</p>
+          </div>
+        </div>
+
+        <div class="glass-card" style="margin-bottom: 24px;">
+          <h3 style="margin-top:0; color:#fff; font-size:15px; margin-bottom:16px;">Select Active Campaign Brief</h3>
+          <div style="display:flex; gap:16px; align-items:center; flex-wrap:wrap;">
+            <select id="brand-match-campaign-select" class="input-field" style="width: 250px; margin-bottom: 0;">
+              <!-- Injected dynamically -->
+            </select>
+            <button class="btn btn-primary" onclick="App.runBrandAiMatching()">Calculate Matches →</button>
+          </div>
+        </div>
+
+        <!-- AI Match Loading State (hidden initially) -->
+        <div class="glass-card" id="brand-match-loader" style="display: none; text-align: center; padding: 60px 20px;">
+          <div class="score-badge-circle" style="width:80px; height:80px; margin: 0 auto 20px auto;">
+            <svg viewBox="0 0 100 100" width="100%" height="100%">
+              <circle cx="50" cy="50" r="44" fill="none" stroke="rgba(255,255,255,0.05)" stroke-width="6" />
+              <circle cx="50" cy="50" r="44" fill="none" stroke="var(--color-primary-cyan)" stroke-width="6" stroke-linecap="round" stroke-dasharray="100 200" transform="rotate(0 50 50)">
+                <animateTransform attributeName="transform" type="rotate" from="0 50 50" to="360 50 50" dur="1.5s" repeatCount="indefinite"/>
+              </circle>
+            </svg>
+          </div>
+          <h3 style="color:#fff; font-size:16px;">Running Gemini AI Matchmaker...</h3>
+          <p class="view-subtitle" style="font-size:12px; margin-top:8px;">Running matching algorithms, pricing indexes, and regional alignment vectors.</p>
+        </div>
+
+        <!-- Match Results Grid -->
+        <div id="brand-match-results-container">
+          <!-- Injected dynamically -->
+        </div>
+      </section>
+
+      <!-- ==================== SUB-VIEW: BRAND INSIGHTS ==================== -->
+      <section id="subview-brand-insights" class="subview" style="display: none;">
+        <div class="view-header">
+          <div>
+            <h1 class="view-title">Campaign Insights & ROI</h1>
+            <p class="view-subtitle">Detailed financial metrics, performance audits, and matched creator yield charts.</p>
+          </div>
+        </div>
+
+        <!-- KPI Row -->
+        <div class="dashboard-grid" style="margin-bottom: 24px; gap: 16px;">
+          <div class="col-4 glass-card stat-card" style="display:flex; align-items:center; gap:16px; box-sizing:border-box; padding:20px;">
+            <div class="stat-icon-wrapper stat-icon-green" style="font-size:24px;">💰</div>
+            <div>
+              <div class="stat-num" id="insights-stat-budget">₹0</div>
+              <div class="stat-label">TOTAL ALLOCATED</div>
+            </div>
+          </div>
+          <div class="col-4 glass-card stat-card" style="display:flex; align-items:center; gap:16px; box-sizing:border-box; padding:20px;">
+            <div class="stat-icon-wrapper stat-icon-cyan" style="font-size:24px;">📊</div>
+            <div>
+              <div class="stat-num" id="insights-stat-spent">₹0</div>
+              <div class="stat-label">BUDGET UTILIZATION</div>
+            </div>
+          </div>
+          <div class="col-4 glass-card stat-card" style="display:flex; align-items:center; gap:16px; box-sizing:border-box; padding:20px;">
+            <div class="stat-icon-wrapper stat-icon-indigo" style="font-size:24px;">📈</div>
+            <div>
+              <div class="stat-num" id="insights-stat-roi">86%</div>
+              <div class="stat-label">AVERAGE COMPATIBILITY</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="dashboard-grid" style="gap: 16px;">
+          <!-- Left: Match quality breakdown -->
+          <div class="col-6 glass-card" style="padding: 24px; box-sizing: border-box;">
+            <h3 style="margin-top: 0; margin-bottom: 20px; color:#fff; font-size:16px;">Match Success Breakdown</h3>
+            <div style="display: flex; flex-direction: column; gap: 16px;">
+              <div>
+                <div style="display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 6px;">
+                  <span style="color: var(--color-text-gray);">Regional Dialect Alignment</span>
+                  <span style="color: #fff; font-weight: 600;">91%</span>
+                </div>
+                <div style="height: 6px; background: rgba(255,255,255,0.05); border-radius: 3px; overflow: hidden;">
+                  <div style="height: 100%; background: var(--color-primary-cyan); width: 91%;"></div>
+                </div>
+              </div>
+
+              <div>
+                <div style="display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 6px;">
+                  <span style="color: var(--color-text-gray);">Audience Demographic Fit</span>
+                  <span style="color: #fff; font-weight: 600;">85%</span>
+                </div>
+                <div style="height: 6px; background: rgba(255,255,255,0.05); border-radius: 3px; overflow: hidden;">
+                  <div style="height: 100%; background: var(--color-primary-indigo); width: 85%;"></div>
+                </div>
+              </div>
+
+              <div>
+                <div style="display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 6px;">
+                  <span style="color: var(--color-text-gray);">Engagement Trust Matching</span>
+                  <span style="color: #fff; font-weight: 600;">88%</span>
+                </div>
+                <div style="height: 6px; background: rgba(255,255,255,0.05); border-radius: 3px; overflow: hidden;">
+                  <div style="height: 100%; background: var(--color-primary-green); width: 88%;"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Right: Campaign Performance Trends -->
+          <div class="col-6 glass-card" style="padding: 24px; box-sizing: border-box; display:flex; flex-direction:column; justify-content:space-between;">
+            <h3 style="margin-top: 0; color:#fff; font-size:16px;">AI Campaign Trends</h3>
+            <p style="font-size: 12px; color: var(--color-text-gray); line-height: 1.6; margin: 0;">
+              Sourcing trends indicate that vernacular content niches (Marathi and Telugu handloom/culinary review scopes) yield **38% higher engagement rates** per rupee than generalized English review campaigns. 
+            </p>
+            <div style="border-top: 1px solid var(--color-border); padding-top: 16px; font-size:11px; color: var(--color-text-gray);">
+              ⭐ Recommended Niche Shift: Increase regional micro-influencer allocations for Q3.
+            </div>
+          </div>
+        </div>
+      </section>
+
       <!-- ==================== SUB-VIEW: ADMIN MONITOR ==================== -->
       <section id="subview-admin-dashboard" class="subview" style="display: none;">
         <div class="view-header">

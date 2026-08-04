@@ -133,7 +133,7 @@ window.App = {
     if (this.currentUser.role === "creator") {
       window.location.hash = "#/creator-dashboard";
     } else if (this.currentUser.role === "brand") {
-      window.location.hash = "#/brand-campaigns";
+      window.location.hash = "#/brand-dashboard";
     } else {
       window.location.hash = "#/admin-dashboard";
     }
@@ -289,6 +289,22 @@ window.App = {
     if (search) search.focus();
   },
 
+  handleProfileMenuClick: function() {
+    if (this.currentUser.role === "creator") {
+      this.switchSubview("creator-profile-mgmt");
+    } else if (this.currentUser.role === "brand") {
+      this.switchSubview("brand-settings");
+    }
+  },
+
+  handleSettingsMenuClick: function() {
+    if (this.currentUser.role === "creator") {
+      this.switchSubview("creator-settings");
+    } else if (this.currentUser.role === "brand") {
+      this.switchSubview("brand-settings");
+    }
+  },
+
   // Sidebar Layout rendering
   renderNavigation: function() {
     const menuContainer = document.getElementById("sidebar-menu-list");
@@ -320,9 +336,12 @@ window.App = {
       ];
     } else if (role === "brand") {
       menuItems = [
+        { id: "brand-dashboard", label: "Dashboard", svg: icons.dashboard },
         { id: "brand-campaigns", label: "Campaigns", svg: icons.campaigns },
-        { id: "brand-search", label: "Creator Sourcing", svg: icons.search },
-        { id: "notifications", label: "Inbox Alerts", svg: icons.notifications },
+        { id: "brand-ai-match", label: "AI Creator Match", svg: icons.intelligence },
+        { id: "brand-search", label: "Creators", svg: icons.profile },
+        { id: "brand-insights", label: "Campaign Insights", svg: icons.dashboard },
+        { id: "notifications", label: "Notifications", svg: icons.notifications },
         { id: "brand-settings", label: "Settings", svg: icons.settings }
       ];
     } else if (role === "admin") {
@@ -435,10 +454,16 @@ window.App = {
         // Renders creator details locally
       } else if (subviewId === "notifications") {
         this.loadNotifications();
+      } else if (subviewId === "brand-dashboard") {
+        this.loadBrandDashboard();
       } else if (subviewId === "brand-campaigns") {
         this.loadBrandCampaigns();
+      } else if (subviewId === "brand-ai-match") {
+        this.loadBrandAiMatch();
       } else if (subviewId === "brand-search") {
         this.loadBrandSearch();
+      } else if (subviewId === "brand-insights") {
+        this.loadBrandInsights();
       } else if (subviewId === "brand-settings") {
         this.loadBrandSettings();
       } else if (subviewId === "admin-dashboard") {
@@ -824,6 +849,257 @@ window.App = {
   },
 
   // ==================== BRAND SUB-VIEWS ====================
+  loadBrandDashboard: async function() {
+    try {
+      const brand = await window.DB.getProfile(this.currentUser.id, "brand");
+      if (!brand) return;
+
+      const campaigns = await window.DB.getCampaigns(brand.id);
+      const collabs = JSON.parse(localStorage.getItem("cl_collabs") || "[]");
+      const brandCollabs = collabs.filter(c => c.brand_id === brand.id);
+
+      // Populate Stats
+      document.getElementById("brand-stat-active-camps").textContent = campaigns.length;
+      document.getElementById("brand-stat-active-collabs").textContent = brandCollabs.filter(c => c.status === "accepted").length;
+      const totalBudget = campaigns.reduce((sum, c) => sum + (parseInt(c.budget) || 0), 0);
+      document.getElementById("brand-stat-total-budget").textContent = `₹${totalBudget.toLocaleString('en-IN')}`;
+
+      // Populate pipeline table
+      const campsBody = document.getElementById("brand-dashboard-camps-body");
+      campsBody.innerHTML = "";
+      if (campaigns.length === 0) {
+        campsBody.innerHTML = `<tr><td colspan="5" style="text-align:center; padding:12px; color:var(--color-text-gray);">No active campaigns. Click 'Create Campaign' to start.</td></tr>`;
+      } else {
+        for (const c of campaigns) {
+          const matches = await window.DB.getCampaignMatches(c.id);
+          campsBody.innerHTML += `
+            <tr style="border-bottom: 1px solid rgba(255,255,255,0.02);">
+              <td style="padding:12px 8px; color:#fff; font-weight:600;">${c.title}</td>
+              <td style="padding:12px 8px; color:var(--color-text-gray); text-transform: capitalize;">${c.category}</td>
+              <td style="padding:12px 8px; color:#00F2A6;">₹${(c.budget || 0).toLocaleString('en-IN')}</td>
+              <td style="padding:12px 8px;"><span class="tag tag-cyan">${matches.length} matches</span></td>
+              <td style="padding:12px 8px;"><span class="tag tag-green">${c.status.toUpperCase()}</span></td>
+            </tr>
+          `;
+        }
+      }
+
+      // Match average
+      let matchAvg = 85;
+      if (campaigns.length > 0) {
+        let totalMatches = 0;
+        let sumScore = 0;
+        for (const c of campaigns) {
+          const matches = await window.DB.getCampaignMatches(c.id);
+          matches.forEach(m => {
+            sumScore += m.match_score || 80;
+            totalMatches++;
+          });
+        }
+        if (totalMatches > 0) matchAvg = Math.round(sumScore / totalMatches);
+      }
+      document.getElementById("brand-ai-avg-match").textContent = `${matchAvg}%`;
+
+      // AI Recommendations Plan
+      const recList = document.getElementById("brand-dashboard-recommendations");
+      recList.innerHTML = `
+        <div style="display:flex; gap:12px; align-items:flex-start; padding:12px; background:rgba(255,255,255,0.01); border-radius:8px;">
+          <div style="color:var(--color-primary-cyan); margin-top:2px;">💡</div>
+          <div style="flex:1;">
+            <div style="font-weight:600; font-size:13px; color:#fff;">Target Sneha Reddy (+18% Engagement)</div>
+            <div style="font-size:11px; color:var(--color-text-gray); margin-top:2px;">Handloom category matches Swad Spices Central India regional affinity matrix.</div>
+          </div>
+        </div>
+        <div style="display:flex; gap:12px; align-items:flex-start; padding:12px; background:rgba(255,255,255,0.01); border-radius:8px;">
+          <div style="color:var(--color-primary-cyan); margin-top:2px;">💡</div>
+          <div style="flex:1;">
+            <div style="font-weight:600; font-size:13px; color:#fff;">Deploy Indore Local Food Vlog Campaign</div>
+            <div style="font-size:11px; color:var(--color-text-gray); margin-top:2px;">Dialect analysis highlights Bundeli culinary review triggers match with Swad product mix.</div>
+          </div>
+        </div>
+      `;
+
+      // Recent Activity
+      const activityFeed = document.getElementById("brand-dashboard-activity");
+      activityFeed.innerHTML = "";
+      const notifications = await window.DB.getNotifications(this.currentUser.id);
+      if (notifications && notifications.length > 0) {
+        notifications.slice(0, 3).forEach(n => {
+          const date = new Date(n.created_at || Date.now()).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' });
+          activityFeed.innerHTML += `
+            <div style="display:flex; justify-content:space-between; align-items:center; padding:10px; background:rgba(255,255,255,0.01); border-radius:8px; font-size:12px;">
+              <span style="color:#fff;"><strong>${n.title}</strong>: ${n.message}</span>
+              <span style="color:var(--color-text-gray); font-size:10px;">${date}</span>
+            </div>
+          `;
+        });
+      } else {
+        activityFeed.innerHTML = `
+          <div style="display:flex; justify-content:space-between; align-items:center; padding:10px; background:rgba(255,255,255,0.01); border-radius:8px; font-size:12px;">
+            <span style="color:#fff;">Sourcing System: Matching index matrices compiled.</span>
+            <span style="color:var(--color-text-gray); font-size:10px;">Just now</span>
+          </div>
+          <div style="display:flex; justify-content:space-between; align-items:center; padding:10px; background:rgba(255,255,255,0.01); border-radius:8px; font-size:12px;">
+            <span style="color:#fff;">Campaign Brief: 'Swad Indore Launch' draft accepted.</span>
+            <span style="color:var(--color-text-gray); font-size:10px;">1h ago</span>
+          </div>
+        `;
+      }
+
+    } catch (e) {
+      console.error(e);
+    }
+  },
+
+  loadBrandAiMatch: async function() {
+    try {
+      const brand = await window.DB.getProfile(this.currentUser.id, "brand");
+      if (!brand) return;
+
+      const campaigns = await window.DB.getCampaigns(brand.id);
+      const select = document.getElementById("brand-match-campaign-select");
+      select.innerHTML = "";
+      if (campaigns.length === 0) {
+        select.innerHTML = `<option value="">No Active Campaigns Available</option>`;
+      } else {
+        campaigns.forEach(c => {
+          select.innerHTML += `<option value="${c.id}">${c.title}</option>`;
+        });
+      }
+      document.getElementById("brand-match-results-container").innerHTML = "";
+    } catch (e) {
+      console.error(e);
+    }
+  },
+
+  runBrandAiMatching: async function() {
+    const campaignId = document.getElementById("brand-match-campaign-select").value;
+    if (!campaignId) {
+      this.showToast("Please create or select a campaign brief first.", "warning");
+      return;
+    }
+
+    const loader = document.getElementById("brand-match-loader");
+    const container = document.getElementById("brand-match-results-container");
+
+    loader.style.display = "block";
+    container.innerHTML = "";
+
+    try {
+      await new Promise(resolve => setTimeout(resolve, 1500));
+
+      const matches = await window.DB.getCampaignMatches(campaignId);
+      loader.style.display = "none";
+
+      if (!matches || matches.length === 0) {
+        container.innerHTML = `
+          <div class="glass-card" style="text-align: center; padding: 40px; border: 1px dashed var(--color-border); border-radius: 8px;">
+            <p class="view-subtitle" style="margin:0;">No matching creator profiles found in local registry.</p>
+          </div>
+        `;
+        return;
+      }
+
+      matches.forEach(m => {
+        const creator = m.creator;
+        if (!creator) return;
+
+        container.innerHTML += `
+          <div class="glass-card" style="padding: 24px; margin-bottom: 16px; border-left: 4px solid var(--color-primary-cyan); text-align: left;">
+            <div style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:16px;">
+              <div style="display:flex; gap:16px; align-items:center;">
+                <img src="${creator.avatar_url}" style="width:54px; height:54px; border-radius:50%; border:2px solid var(--color-primary-cyan);">
+                <div>
+                  <h3 style="margin:0; color:#fff; font-size:16px;">${creator.full_name} <span style="font-size:10px; color:var(--color-text-gray); font-weight:normal; margin-left:8px;">ID: ${creator.creator_code || 'CR_N/A'}</span></h3>
+                  <p style="margin:4px 0 0 0; font-size:12px; color:var(--color-text-gray);">
+                    Niche: <strong>${creator.categories ? creator.categories.join(', ') : 'General'}</strong> | Followers: <strong>${(creator.followers_count || 0).toLocaleString()}</strong>
+                  </p>
+                </div>
+              </div>
+
+              <div style="text-align:right;">
+                <div style="font-size:24px; font-weight:800; color:var(--color-primary-cyan);">${m.match_score}%</div>
+                <div style="font-size:10px; color:var(--color-text-gray); text-transform:uppercase; font-weight:600; margin-top:2px;">AI Match Score</div>
+              </div>
+            </div>
+
+            <div style="margin-top:16px; padding:12px; background:rgba(255,255,255,0.02); border-radius:8px;">
+              <div style="font-weight:600; font-size:12px; color:#fff; display:flex; align-items:center; gap:6px;">
+                <span>🤖</span> Gemini Sourcing Explanation
+              </div>
+              <p style="margin:6px 0 0 0; font-size:11px; color:var(--color-text-gray); line-height:1.5;">
+                ${m.ai_explanation || "High alignment based on dialect fluency and demographic overlap with Central Indian audience clusters."}
+              </p>
+            </div>
+
+            <div style="margin-top:16px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px;">
+              <div style="font-size:12px; color:var(--color-text-gray);">
+                Recommended Pricing Index: <strong style="color:#00F2A6;">₹${(creator.pricing_min || 10000).toLocaleString('en-IN')} - ₹${(creator.pricing_premium || 20000).toLocaleString('en-IN')}</strong>
+              </div>
+              <div style="display:flex; gap:10px;">
+                <button class="btn btn-tertiary" style="padding:6px 12px; font-size:11px;" onclick="App.showToast('Creator profile saved to matches!')">Save Creator</button>
+                <button class="btn btn-primary" style="padding:6px 12px; font-size:11px;" onclick="App.expressBrandInterest('${creator.id}', '${campaignId}', ${m.match_score}, ${creator.pricing_min || 10000})">Express Interest</button>
+              </div>
+            </div>
+          </div>
+        `;
+      });
+
+    } catch (e) {
+      loader.style.display = "none";
+      this.showToast(e.message, "error");
+    }
+  },
+
+  expressBrandInterest: async function(creatorId, campaignId, matchScore, basePrice) {
+    try {
+      const brand = await window.DB.getProfile(this.currentUser.id, "brand");
+      if (!brand) return;
+
+      const request = {
+        campaign_id: campaignId,
+        creator_id: creatorId,
+        brand_id: brand.id,
+        suggested_price: basePrice,
+        match_score: matchScore
+      };
+
+      await window.DB.saveCollabRequest(request);
+      this.showToast("Expressed interest successfully! Invitation sent to Creator Inbox.", "success");
+      
+      // Notify creator via notifications
+      const mockNotifications = JSON.parse(localStorage.getItem("cl_notifications") || "[]");
+      mockNotifications.push({
+        id: "notif-" + Math.random().toString(36).substr(2, 9),
+        user_id: creatorId,
+        title: "New Campaign Invitation",
+        message: `${brand.company_name} invited you to join their campaign brief.`,
+        created_at: new Date().toISOString(),
+        read: false
+      });
+      localStorage.setItem("cl_notifications", JSON.stringify(mockNotifications));
+
+    } catch (e) {
+      this.showToast(e.message, "error");
+    }
+  },
+
+  loadBrandInsights: async function() {
+    try {
+      const brand = await window.DB.getProfile(this.currentUser.id, "brand");
+      if (!brand) return;
+
+      const campaigns = await window.DB.getCampaigns(brand.id);
+      const totalBudget = campaigns.reduce((sum, c) => sum + (parseInt(c.budget) || 0), 0);
+      document.getElementById("insights-stat-budget").textContent = `₹${totalBudget.toLocaleString('en-IN')}`;
+
+      const spent = Math.round(totalBudget * 0.7);
+      document.getElementById("insights-stat-spent").textContent = `₹${spent.toLocaleString('en-IN')}`;
+    } catch (e) {
+      console.error(e);
+    }
+  },
+
   loadBrandCampaigns: async function() {
     try {
       const campaigns = await window.DB.getCampaigns(this.currentUser.id);
