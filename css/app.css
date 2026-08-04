@@ -701,7 +701,7 @@
   background: #090b11; /* Neutral dark obsidian instead of navy green */
   position: relative;
   z-index: 1;
-  overflow: hidden;
+  overflow-x: hidden;
 }
 
 /* Floating Navigation Header - Floating Glass Island */

@@ -155,6 +155,14 @@ window.App = {
     document.getElementById("auth-submit-btn").textContent = isLogin ? "Login Account →" : "Create New Account →";
     document.getElementById("auth-form").dataset.mode = tab;
     
+    // Reset password toggle and error message when switching tabs
+    const errBox = document.getElementById("auth-error-message");
+    if (errBox) errBox.style.display = "none";
+    const pwdInput = document.getElementById("auth-password");
+    if (pwdInput) pwdInput.type = "password";
+    const eye = document.getElementById("toggle-password-eye");
+    if (eye) eye.textContent = "👁️";
+    
     // Reset page scrolls to top of viewport
     window.scrollTo({ top: 0, behavior: "instant" });
     document.documentElement.scrollTop = 0;
@@ -169,6 +177,9 @@ window.App = {
     const isOtp = document.getElementById("otp-input-group").style.display === "block";
     
     submitBtn.disabled = true;
+    
+    const errBox = document.getElementById("auth-error-message");
+    if (errBox) errBox.style.display = "none";
     
     if (isOtp) {
       this.otpEmailTarget = email;
@@ -197,6 +208,11 @@ window.App = {
       this.showMainLayout();
     } catch (err) {
       this.showToast(err.message, "error");
+      const errBox = document.getElementById("auth-error-message");
+      if (errBox) {
+        errBox.textContent = err.message;
+        errBox.style.display = "block";
+      }
       submitBtn.disabled = false;
       submitBtn.textContent = mode === "login" ? "Login Account →" : "Create New Account →";
     }
@@ -287,6 +303,20 @@ window.App = {
     this.showToast("AI Assistant activated. Ask anything or search recommendations!", "info");
     const search = document.getElementById("global-ai-search");
     if (search) search.focus();
+  },
+
+  togglePasswordVisibility: function() {
+    const pwdInput = document.getElementById("auth-password");
+    const eye = document.getElementById("toggle-password-eye");
+    if (pwdInput && eye) {
+      if (pwdInput.type === "password") {
+        pwdInput.type = "text";
+        eye.textContent = "👁️‍🗨️";
+      } else {
+        pwdInput.type = "password";
+        eye.textContent = "👁️";
+      }
+    }
   },
 
   handleProfileMenuClick: function() {

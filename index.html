@@ -51,13 +51,6 @@
         <a class="landing-nav-link" href="#pricing">Pricing</a>
         <a class="landing-nav-link" href="#faq">FAQs</a>
       </nav>
-      <div style="display: flex; align-items: center; gap: 8px; margin-right: 12px;">
-        <span class="input-label" style="font-size: 11px; margin-bottom: 0;">THEME:</span>
-        <select class="input-field" style="padding: 4px 8px; width: 130px; font-size: 12px; margin-bottom: 0;" onchange="App.setTheme(this.value)">
-          <option value="glass">Glass Glow (Option 1)</option>
-          <option value="slate">Slate Minimal (Option 2)</option>
-        </select>
-      </div>
       <div style="display: flex; gap: 16px; align-items: center;">
         <a class="text-link" style="font-size: 13px; font-weight: 600; cursor: pointer; color: #fff; text-decoration: none;" onclick="App.showAuthLayout('login')">Login</a>
         <button class="btn btn-primary" style="padding: 8px 16px; font-size: 12px;" onclick="App.showAuthLayout('register')">Get Started</button>
@@ -493,6 +486,9 @@
               <span style="font-size:9px; color:var(--color-text-muted); font-weight:600; letter-spacing:0.05em;">OR CREDENTIALS</span>
               <div style="flex:1; height:1px; background:rgba(255,255,255,0.05);"></div>
             </div>
+
+            <!-- Inline auth error display container -->
+            <div id="auth-error-message" style="display:none; padding:12px; background:rgba(239, 68, 68, 0.1); border-left:4px solid #ef4444; border-radius:4px; font-size:12px; color:#fca5a5; margin-bottom:16px; text-align: left;"></div>
             
             <form id="auth-form" onsubmit="App.handleAuthSubmit(event)">
               <div class="input-group">
@@ -503,9 +499,11 @@
               <div class="input-group" id="password-input-group">
                 <label class="input-label" for="auth-password" style="display:flex; justify-content:space-between; align-items:center; width: 100%;">
                   PASSWORD
-                  <a class="text-link" style="font-size:11px; text-decoration:none; font-weight:400;" onclick="App.showForgotPanel()">Forgot Password?</a>
                 </label>
-                <input type="password" id="auth-password" class="input-field" placeholder="Enter your password">
+                <div style="position: relative; display: flex; align-items: center; width: 100%;">
+                  <input type="password" id="auth-password" class="input-field" placeholder="Enter your password" style="width: 100%; padding-right: 40px; box-sizing: border-box;">
+                  <span id="toggle-password-eye" style="position: absolute; right: 12px; cursor: pointer; color: var(--color-text-gray); user-select: none; font-size: 16px; line-height: 1;" onclick="App.togglePasswordVisibility()">👁️</span>
+                </div>
               </div>
               
               <div class="input-group" id="otp-input-group" style="display: none;">
