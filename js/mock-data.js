@@ -5,6 +5,7 @@ window.mockData = {
   creators: [
     {
       id: "creator-anjali-verma",
+      creator_code: "CR_001",
       full_name: "Anjali Verma",
       avatar_url: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150",
       bio: "Discovering Indore's food culture and traditional Bundelkhand recipes. Sharing authentic regional flavors.",
@@ -25,6 +26,7 @@ window.mockData = {
     },
     {
       id: "creator-rahul-kapoor",
+      creator_code: "CR_002",
       full_name: "Rahul Kapoor",
       avatar_url: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150",
       bio: "Unboxing the latest tech in simple Hindi. Making gadgets easy to understand for everyone.",
@@ -45,6 +47,7 @@ window.mockData = {
     },
     {
       id: "creator-priya-sharma",
+      creator_code: "CR_003",
       full_name: "Priya Sharma",
       avatar_url: "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=150",
       bio: "Assal Marathi recipes and Pune food walk updates. Serving traditional food with a modern twist.",
@@ -65,6 +68,7 @@ window.mockData = {
     },
     {
       id: "creator-sneha-reddy",
+      creator_code: "CR_004",
       full_name: "Sneha Reddy",
       avatar_url: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150",
       bio: "Saree styling guides and ethnic lookbooks in Telugu. Directing Telugu fashion trends.",
@@ -231,6 +235,7 @@ window.mockData = {
   brands: {
     "brand-1": {
       id: "brand-1",
+      brand_code: "BR_001",
       company_name: "Swad Spices Private Limited",
       website: "www.swadspices.com",
       industry: "FMCG / Food Products",

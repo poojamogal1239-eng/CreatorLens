@@ -22,9 +22,14 @@ CREATE TABLE public.users (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
+-- Sequence generators for user-friendly serial codes
+CREATE SEQUENCE IF NOT EXISTS creator_code_seq START WITH 5;
+CREATE SEQUENCE IF NOT EXISTS brand_code_seq START WITH 2;
+
 -- 2. Creators Profile Table
 CREATE TABLE public.creators (
     id UUID PRIMARY KEY REFERENCES public.users(id) ON DELETE CASCADE,
+    creator_code VARCHAR(20) UNIQUE DEFAULT 'CR_' || LPAD(nextval('creator_code_seq')::TEXT, 3, '0'),
     full_name TEXT NOT NULL,
     avatar_url TEXT,
     bio TEXT,
@@ -47,6 +52,7 @@ CREATE TABLE public.creators (
 -- 3. Brands Profile Table
 CREATE TABLE public.brands (
     id UUID PRIMARY KEY REFERENCES public.users(id) ON DELETE CASCADE,
+    brand_code VARCHAR(20) UNIQUE DEFAULT 'BR_' || LPAD(nextval('brand_code_seq')::TEXT, 3, '0'),
     company_name TEXT NOT NULL,
     website TEXT,
     industry TEXT,

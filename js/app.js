@@ -276,6 +276,19 @@ window.App = {
     this.showAuthLayout();
   },
 
+  toggleUserDropdown: function() {
+    const drop = document.getElementById("top-nav-user-dropdown");
+    if (drop) {
+      drop.style.display = drop.style.display === "none" ? "block" : "none";
+    }
+  },
+
+  toggleAiAssistant: function() {
+    this.showToast("AI Assistant activated. Ask anything or search recommendations!", "info");
+    const search = document.getElementById("global-ai-search");
+    if (search) search.focus();
+  },
+
   // Sidebar Layout rendering
   renderNavigation: function() {
     const menuContainer = document.getElementById("sidebar-menu-list");
@@ -290,17 +303,18 @@ window.App = {
       search: `<svg class="sidebar-icon" viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>`,
       admin: `<svg class="sidebar-icon" viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>`,
       notifications: `<svg class="sidebar-icon" viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>`,
-      settings: `<svg class="sidebar-icon" viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>`
+      settings: `<svg class="sidebar-icon" viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>`,
+      intelligence: `<svg class="sidebar-icon" viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"></path><circle cx="12" cy="12" r="4"></circle></svg>`
     };
     
     let menuItems = [];
     if (role === "creator") {
       menuItems = [
         { id: "creator-dashboard", label: "Dashboard", svg: icons.dashboard },
-        { id: "creator-profile", label: "Onboarding Wizard", svg: icons.profile },
-        { id: "creator-campaign-discovery", label: "Browse Campaigns", svg: icons.search },
-        { id: "creator-profile-mgmt", label: "Edit Profile", svg: icons.profile },
-        { id: "creator-earnings", label: "Earnings & Stats", svg: icons.dashboard },
+        { id: "creator-intelligence", label: "Creator Intelligence", svg: icons.intelligence },
+        { id: "creator-campaign-discovery", label: "Campaign Marketplace", svg: icons.search },
+        { id: "creator-my-campaigns", label: "My Campaigns", svg: icons.campaigns },
+        { id: "creator-profile-mgmt", label: "My Profile", svg: icons.profile },
         { id: "notifications", label: "Inbox Alerts", svg: icons.notifications },
         { id: "creator-settings", label: "Settings", svg: icons.settings }
       ];
@@ -342,6 +356,57 @@ window.App = {
     });
     const activeLink = document.getElementById(`nav-link-${subviewId}`);
     if (activeLink) activeLink.classList.add("active");
+
+    // Close user dropdown if open
+    const drop = document.getElementById("top-nav-user-dropdown");
+    if (drop) drop.style.display = "none";
+
+    // Update persistent top nav breadcrumbs & title
+    const breadcrumb = document.getElementById("top-nav-breadcrumb");
+    const title = document.getElementById("top-nav-page-title");
+    
+    if (breadcrumb && title) {
+      let path = "Portal";
+      let label = "Dashboard";
+      
+      if (subviewId === "creator-dashboard") {
+        path = "Portal / Dashboard";
+        label = "Dashboard Overview";
+      } else if (subviewId === "creator-profile") {
+        path = "Portal / Onboarding";
+        label = "Creator Portal Onboarding";
+      } else if (subviewId === "creator-intelligence") {
+        path = "Portal / Creator Intelligence";
+        label = "Overall Intelligence & Score Vectors";
+      } else if (subviewId === "creator-campaign-discovery") {
+        path = "Portal / Campaign Marketplace";
+        label = "Sponsorship & Campaign Sourcing";
+      } else if (subviewId === "creator-my-campaigns") {
+        path = "Portal / My Campaigns";
+        label = "Active Partnerships & Collaborations";
+      } else if (subviewId === "creator-profile-mgmt") {
+        path = "Portal / My Profile";
+        label = "Creator Profile Details";
+      } else if (subviewId === "notifications") {
+        path = "Portal / Inbox Alerts";
+        label = "Notifications & AI Alerts";
+      } else if (subviewId === "creator-settings") {
+        path = "Portal / Settings";
+        label = "Account Preferences & Security";
+      } else if (subviewId === "brand-campaigns") {
+        path = "Portal / Campaigns";
+        label = "Brand Campaigns Manager";
+      } else if (subviewId === "brand-search") {
+        path = "Portal / Creator Sourcing";
+        label = "Discover Top Talent";
+      } else if (subviewId === "brand-settings") {
+        path = "Portal / Settings";
+        label = "Brand Connection Preferences";
+      }
+      
+      breadcrumb.textContent = path;
+      title.textContent = label;
+    }
     
     // Hide all subviews
     document.querySelectorAll(".subview").forEach(el => {
@@ -358,12 +423,14 @@ window.App = {
         this.loadCreatorDashboard();
       } else if (subviewId === "creator-profile") {
         this.initOnboardingWizard();
+      } else if (subviewId === "creator-intelligence") {
+        this.loadCreatorIntelligence();
       } else if (subviewId === "creator-campaign-discovery") {
         this.loadCampaignDiscoveryList();
+      } else if (subviewId === "creator-my-campaigns") {
+        this.loadMyCampaigns();
       } else if (subviewId === "creator-profile-mgmt") {
         this.loadProfileMgmtDetails();
-      } else if (subviewId === "creator-earnings") {
-        this.loadCreatorEarnings();
       } else if (subviewId === "creator-settings") {
         // Renders creator details locally
       } else if (subviewId === "notifications") {
@@ -485,6 +552,200 @@ window.App = {
         collabList.innerHTML = `<p class="view-subtitle" style="font-size:12px;">Your next collaboration starts here. Open invitations from premium brands will appear in this workspace.</p>`;
       }
 
+      // Load Recent Activity (timeline based on notifications)
+      const activityList = document.getElementById("dashboard-activity-list");
+      if (activityList) {
+        activityList.innerHTML = "";
+        try {
+          const notifications = await window.DB.getNotifications(this.currentUser.id);
+          if (notifications && notifications.length > 0) {
+            notifications.slice(0, 3).forEach(n => {
+              const formattedDate = new Date(n.created_at || Date.now()).toLocaleDateString('en-IN', {
+                day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit'
+              });
+              activityList.innerHTML += `
+                <div style="display:flex; justify-content:space-between; align-items:center; padding:10px; background:rgba(255,255,255,0.01); border-radius:8px; font-size:12px;">
+                  <div style="display:flex; gap:10px; align-items:center;">
+                    <span style="color:#00F2A6;">●</span>
+                    <span style="color:#fff;"><strong>${n.title}</strong>: ${n.message}</span>
+                  </div>
+                  <span style="color:var(--color-text-gray); font-size:11px;">${formattedDate}</span>
+                </div>
+              `;
+            });
+          } else {
+            activityList.innerHTML = `
+              <div style="display:flex; justify-content:space-between; align-items:center; padding:10px; background:rgba(255,255,255,0.01); border-radius:8px; font-size:12px;">
+                <div style="display:flex; gap:10px; align-items:center;">
+                  <span style="color:#00D4FF;">●</span>
+                  <span style="color:#fff;">Profile Audit: Intelligence vectors generated by Gemini</span>
+                </div>
+                <span style="color:var(--color-text-gray); font-size:11px;">Just now</span>
+              </div>
+              <div style="display:flex; justify-content:space-between; align-items:center; padding:10px; background:rgba(255,255,255,0.01); border-radius:8px; font-size:12px;">
+                <div style="display:flex; gap:10px; align-items:center;">
+                  <span style="color:#4F46E5;">●</span>
+                  <span style="color:#fff;">Account Setup: Creator workspace created successfully</span>
+                </div>
+                <span style="color:var(--color-text-gray); font-size:11px;">10m ago</span>
+              </div>
+            `;
+          }
+        } catch (e) {
+          console.error("Failed to load activity list:", e);
+        }
+      }
+
+    } catch (e) {
+      this.showToast(e.message, "error");
+    }
+  },
+
+  loadCreatorIntelligence: async function() {
+    try {
+      const creator = await window.DB.getProfile(this.currentUser.id, "creator");
+      if (!creator) return;
+
+      const scores = await window.DB.getCreatorScores(creator.id);
+      if (scores) {
+        // Radar Chart
+        window.UI.renderRadarChart("intel-radar-chart-container", scores);
+        
+        // Progress Circular badge
+        document.getElementById("intel-badge-score-value").textContent = scores.intelligence_score;
+        let rating = "Needs Improvement";
+        if (scores.intelligence_score >= 90) rating = "Excellent";
+        else if (scores.intelligence_score >= 80) rating = "Strong";
+        else if (scores.intelligence_score >= 60) rating = "Average";
+        document.getElementById("intel-badge-score-label").textContent = rating;
+
+        const scoreCircle = document.getElementById("intel-score-circle-ring");
+        const circumference = 276.4;
+        const offset = circumference - (scores.intelligence_score / 100) * circumference;
+        setTimeout(() => {
+          if (scoreCircle) scoreCircle.style.strokeDashoffset = offset;
+        }, 100);
+
+        document.getElementById("intel-score-explanation").textContent = scores.ai_explanation || "No explanation provided.";
+
+        // Score breakdown bars
+        document.getElementById("intel-breakdown-trust").textContent = `${scores.audience_trust}%`;
+        document.getElementById("intel-bar-trust").style.width = `${scores.audience_trust}%`;
+
+        document.getElementById("intel-breakdown-engagement").textContent = `${scores.engagement_rate}%`;
+        document.getElementById("intel-bar-engagement").style.width = `${scores.engagement_rate}%`;
+
+        document.getElementById("intel-breakdown-regional").textContent = `${scores.regional_influence}%`;
+        document.getElementById("intel-bar-regional").style.width = `${scores.regional_influence}%`;
+
+        document.getElementById("intel-breakdown-consistency").textContent = `${scores.content_consistency}%`;
+        document.getElementById("intel-bar-consistency").style.width = `${scores.content_consistency}%`;
+
+        document.getElementById("intel-breakdown-readiness").textContent = `${scores.brand_readiness}%`;
+        document.getElementById("intel-bar-readiness").style.width = `${scores.brand_readiness}%`;
+      } else {
+        document.getElementById("intel-badge-score-value").textContent = "--";
+        document.getElementById("intel-badge-score-label").textContent = "Unenriched";
+        document.getElementById("intel-score-explanation").textContent = "Calculate score to view vectors.";
+      }
+
+      // Load suggestions
+      const suggestions = await window.DB.getSuggestions(creator.id);
+      const suggList = document.getElementById("intel-suggestions-list");
+      suggList.innerHTML = "";
+      if (suggestions && suggestions.length > 0) {
+        suggestions.forEach(s => {
+          suggList.innerHTML += `
+            <div class="suggestion-item" style="display:flex; gap:12px; align-items:flex-start; margin-bottom:16px; padding:12px; background:rgba(255,255,255,0.01); border-radius:8px;">
+              <div class="suggestion-icon" style="margin-top:2px;">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--color-primary-cyan)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 14c.2-1 .7-1.7 1.5-2.5 1-.9 1.5-2.2 1.5-3.5A5 5 0 0 0 8 8c0 1 .3 2.2 1.5 3.5.7.7 1.3 1.5 1.5 2.5"></path><line x1="9" y1="18" x2="15" y2="18"></line><line x1="10" y1="22" x2="14" y2="22"></line></svg>
+              </div>
+              <div class="suggestion-content" style="flex:1;">
+                <div class="suggestion-title" style="font-weight:600; font-size:13px; color:#fff;">${s.suggestion_text}</div>
+                <div class="suggestion-desc" style="font-size:11px; color:var(--color-text-gray); margin-top:2px;">Calculated impact on score: +${s.expected_improvement} points.</div>
+              </div>
+              <span class="suggestion-impact impact-${s.impact_level}" style="font-size:9px; padding:2px 6px;">${s.impact_level.toUpperCase()}</span>
+            </div>
+          `;
+        });
+      } else {
+        suggList.innerHTML = `<p class="view-subtitle" style="font-size:12px;">No recommendations compiled yet.</p>`;
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  },
+
+  currentMyCampsTab: "all",
+  filterMyCampaigns: function(tabName) {
+    this.currentMyCampsTab = tabName;
+    document.querySelectorAll("#subview-creator-my-campaigns button").forEach(btn => {
+      btn.classList.remove("active-tab");
+    });
+    const activeBtn = document.getElementById(`tab-mycamps-${tabName}`);
+    if (activeBtn) activeBtn.classList.add("active-tab");
+    this.loadMyCampaigns();
+  },
+
+  loadMyCampaigns: async function() {
+    try {
+      const creator = await window.DB.getProfile(this.currentUser.id, "creator");
+      if (!creator) return;
+
+      const collabs = await window.DB.getCollabsForCreator(creator.id);
+      const container = document.getElementById("mycamps-list-container");
+      container.innerHTML = "";
+
+      let filtered = collabs || [];
+      if (this.currentMyCampsTab !== "all") {
+        filtered = filtered.filter(c => c.status === this.currentMyCampsTab);
+      }
+
+      if (filtered.length === 0) {
+        container.innerHTML = `
+          <div class="luxury-card" style="text-align: center; padding: 40px; border-style: dashed;">
+            <p class="view-subtitle">No campaigns found in this category.</p>
+          </div>
+        `;
+        return;
+      }
+
+      filtered.forEach(c => {
+        const badgeClass = c.status === "accepted" ? "tag-green" : c.status === "rejected" ? "tag-indigo" : "tag-cyan";
+        const statusLabel = c.status === "accepted" ? "ONGOING" : c.status.toUpperCase();
+        
+        container.innerHTML += `
+          <div class="glass-card" style="padding: 20px; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px;">
+            <div style="flex: 1; min-width: 250px;">
+              <h3 style="margin: 0 0 8px 0; color: #fff; font-size: 15px;">${c.campaign ? c.campaign.title : 'Campaign Offer'}</h3>
+              <p class="view-subtitle" style="font-size: 12px; margin: 0; line-height:1.5;">
+                Company: <strong>${c.brand ? c.brand.company_name : 'Sponsor'}</strong> | Niche: <strong>${c.campaign ? c.campaign.category : 'N/A'}</strong><br>
+                Offered Budget: <strong>₹${c.suggested_price.toLocaleString('en-IN')}</strong> | Match Score: <strong>${c.match_score}%</strong>
+              </p>
+            </div>
+            
+            <div style="display: flex; align-items: center; gap: 12px;">
+              <span class="tag ${badgeClass}" style="font-size: 10px; padding: 4px 8px;">${statusLabel}</span>
+              ${c.status === "pending" ? `
+                <div style="display: flex; gap: 8px;">
+                  <button class="btn btn-primary" style="padding: 6px 12px; font-size: 11px;" onclick="App.handleCollabActionCampaigns('${c.id}', 'accepted')">Accept</button>
+                  <button class="btn btn-tertiary" style="padding: 6px 12px; font-size: 11px;" onclick="App.handleCollabActionCampaigns('${c.id}', 'rejected')">Decline</button>
+                </div>
+              ` : ''}
+            </div>
+          </div>
+        `;
+      });
+    } catch (err) {
+      console.error(err);
+    }
+  },
+
+  handleCollabActionCampaigns: async function(collabId, status) {
+    try {
+      await window.DB.updateCollabStatus(collabId, status);
+      this.showToast(`Invitation marked as ${status}`);
+      this.loadMyCampaigns();
     } catch (e) {
       this.showToast(e.message, "error");
     }
@@ -1813,8 +2074,13 @@ window.App = {
       const minPrice = parseInt(document.getElementById("ob-price-min").value) || 10000;
       const premPrice = parseInt(document.getElementById("ob-price-prem").value) || 20000;
       
+      const creators = JSON.parse(localStorage.getItem("cl_creators") || "[]");
+      const idx = creators.findIndex(c => c.id === this.currentUser.id);
+      const existingCode = (creators[idx] && creators[idx].creator_code) || ("CR_" + String(creators.length + 5).padStart(3, "0"));
+      
       const updatedProfile = {
         id: this.currentUser.id,
+        creator_code: existingCode,
         full_name: name,
         avatar_url: avatar,
         bio: bio,
@@ -1832,14 +2098,21 @@ window.App = {
       };
       
       // Update in Local Storage
-      const creators = JSON.parse(localStorage.getItem("cl_creators") || "[]");
-      const idx = creators.findIndex(c => c.id === this.currentUser.id);
       if (idx !== -1) {
         creators[idx] = updatedProfile;
       } else {
         creators.push(updatedProfile);
       }
       localStorage.setItem("cl_creators", JSON.stringify(creators));
+      
+      if (window.DB.isLive()) {
+        await window.DB.saveProfile(this.currentUser.id, "creator", updatedProfile);
+        try {
+          await window.N8N.triggerProfileEnrichment(this.currentUser.id);
+        } catch (e) {
+          console.warn("Failed to run live profile enrichment trigger on onboarding:", e);
+        }
+      }
       
       // Save compiled scores
       const scores = JSON.parse(localStorage.getItem("cl_scores") || "{}");

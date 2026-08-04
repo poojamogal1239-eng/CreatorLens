@@ -112,8 +112,11 @@ window.DB = {
       
       if (role === "creator") {
         const creators = JSON.parse(localStorage.getItem("cl_creators") || "[]");
+        const nextNum = creators.length + 5;
+        const creator_code = "CR_" + String(nextNum).padStart(3, "0");
         creators.push({
           id,
+          creator_code,
           full_name: email.split("@")[0],
           avatar_url: "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150",
           bio: "New Creator Onboard",
@@ -129,8 +132,11 @@ window.DB = {
         localStorage.setItem("cl_creators", JSON.stringify(creators));
       } else if (role === "brand") {
         const brands = JSON.parse(localStorage.getItem("cl_brands") || "{}");
+        const nextNum = Object.keys(brands).length + 2;
+        const brand_code = "BR_" + String(nextNum).padStart(3, "0");
         brands[id] = {
           id,
+          brand_code,
           company_name: email.split("@")[0] + " Corp",
           website: "",
           industry: "",

@@ -45,10 +45,11 @@
       <nav class="landing-nav">
         <a class="landing-nav-link" href="#/">Home</a>
         <a class="landing-nav-link" href="#features">Features</a>
-        <a class="landing-nav-link" href="#sandbox">Solutions</a>
+        <a class="landing-nav-link" href="#sandbox">How It Works</a>
+        <a class="landing-nav-link" href="#features">For Creators</a>
+        <a class="landing-nav-link" href="#sandbox">For Brands</a>
         <a class="landing-nav-link" href="#pricing">Pricing</a>
-        <a class="landing-nav-link" href="#faq">About Us</a>
-        <a class="landing-nav-link" href="#contact">Resources</a>
+        <a class="landing-nav-link" href="#faq">FAQs</a>
       </nav>
       <div style="display: flex; align-items: center; gap: 8px; margin-right: 12px;">
         <span class="input-label" style="font-size: 11px; margin-bottom: 0;">THEME:</span>
@@ -344,6 +345,63 @@
         </form>
       </div>
     </section>
+
+    <!-- Landing Footer -->
+    <footer class="landing-footer" style="background: rgba(8, 17, 24, 0.95); border-top: 1px solid var(--color-border); padding: 60px 40px; margin-top: 80px; box-sizing: border-box;">
+      <div style="max-width: 1200px; margin: 0 auto; display: flex; flex-wrap: wrap; justify-content: space-between; gap: 40px; text-align: left;">
+        <!-- Left: Logo & Info -->
+        <div style="flex: 1; min-width: 250px;">
+          <div class="auth-logo" style="margin-bottom: 16px; display: flex; align-items: center; gap: 10px;">
+            <svg viewBox="0 0 100 100" width="32" height="32" xmlns="http://www.w3.org/2000/svg">
+              <path d="M 75.45, 24.55 A 36 36 0 1 0 75.45, 75.45" fill="none" stroke="url(#logo-c-grad-landing)" stroke-width="11" stroke-linecap="round" />
+              <circle cx="50" cy="50" r="11" fill="#111827" />
+            </svg>
+            <div class="brand-text" style="font-size: 18px; color: #fff;">creator<span style="color: var(--color-primary-cyan);">Lens</span></div>
+          </div>
+          <p style="font-size: 12px; color: var(--color-text-gray); line-height: 1.6; max-width: 250px; margin: 0;">
+            The Luxury AI Operating System for Creator Intelligence. Measure true regional affinity, engagement trust, and unlock fair pricing benchmarks.
+          </p>
+          <div style="font-size: 11px; color: var(--color-text-gray); margin-top: 24px;">
+            © 2026 CreatorLens. All rights reserved.
+          </div>
+        </div>
+
+        <!-- Right: Links Columns -->
+        <div style="display: flex; gap: 60px; flex-wrap: wrap;">
+          <!-- Product Column -->
+          <div>
+            <h4 style="color: #fff; font-size: 13px; font-weight: 700; margin-top: 0; margin-bottom: 16px; text-transform: uppercase; letter-spacing: 0.05em;">Product</h4>
+            <div style="display: flex; flex-direction: column; gap: 10px; font-size: 12px;">
+              <a href="#features" style="color: var(--color-text-gray); text-decoration: none;">Features</a>
+              <a href="#features" style="color: var(--color-text-gray); text-decoration: none;">Creator Intelligence</a>
+              <a href="#sandbox" style="color: var(--color-text-gray); text-decoration: none;">AI Matching</a>
+              <a href="#pricing" style="color: var(--color-text-gray); text-decoration: none;">Pricing Intelligence</a>
+            </div>
+          </div>
+
+          <!-- Resources Column -->
+          <div>
+            <h4 style="color: #fff; font-size: 13px; font-weight: 700; margin-top: 0; margin-bottom: 16px; text-transform: uppercase; letter-spacing: 0.05em;">Resources</h4>
+            <div style="display: flex; flex-direction: column; gap: 10px; font-size: 12px;">
+              <a href="#faq" style="color: var(--color-text-gray); text-decoration: none;">Help Center</a>
+              <a href="#faq" style="color: var(--color-text-gray); text-decoration: none;">FAQs</a>
+              <a href="#/" style="color: var(--color-text-gray); text-decoration: none;">Blog (Optional)</a>
+            </div>
+          </div>
+
+          <!-- Company Column -->
+          <div>
+            <h4 style="color: #fff; font-size: 13px; font-weight: 700; margin-top: 0; margin-bottom: 16px; text-transform: uppercase; letter-spacing: 0.05em;">Company</h4>
+            <div style="display: flex; flex-direction: column; gap: 10px; font-size: 12px;">
+              <a href="#faq" style="color: var(--color-text-gray); text-decoration: none;">About Us</a>
+              <a href="#contact" style="color: var(--color-text-gray); text-decoration: none;">Contact Us</a>
+              <a href="#/" style="color: var(--color-text-gray); text-decoration: none;">Privacy Policy</a>
+              <a href="#/" style="color: var(--color-text-gray); text-decoration: none;">Terms & Conditions</a>
+            </div>
+          </div>
+        </div>
+      </div>
+    </footer>
   </div>
 
   <!-- ==================== AUTH VIEW ==================== -->
@@ -606,6 +664,50 @@
     <!-- CONTENT MAIN CONTAINER -->
     <main class="main-content">
       
+      <!-- Persistent Top Navigation Header -->
+      <header class="app-top-navbar" style="display: flex; justify-content: space-between; align-items: center; padding: 16px 24px; border-bottom: 1px solid var(--color-border); margin-bottom: 24px; background: rgba(13, 27, 36, 0.4); backdrop-filter: blur(8px); box-sizing: border-box; border-radius: 12px; margin-top: 8px;">
+        <!-- Left: Breadcrumb / Page Title -->
+        <div style="display: flex; flex-direction: column; gap: 4px;">
+          <div class="breadcrumb" style="font-size: 10px; color: var(--color-text-gray); text-transform: uppercase; letter-spacing: 0.05em;" id="top-nav-breadcrumb">
+            Dashboard
+          </div>
+          <h2 class="page-title" style="margin: 0; font-size: 18px; color: #fff; font-weight: 700;" id="top-nav-page-title">
+            Dashboard Overview
+          </h2>
+        </div>
+
+        <!-- Center: Global AI Search -->
+        <div style="flex: 0.5; max-width: 400px; position: relative;" class="global-search-container">
+          <input type="text" placeholder="Search campaigns, ask AI, find insights..." style="width: 100%; padding: 8px 16px 8px 40px; border-radius: 20px; background: rgba(255,255,255,0.03); border: 1px solid var(--color-border); color: #fff; font-size: 13px; outline: none; transition: border-color 0.3s;" id="global-ai-search">
+          <svg style="position: absolute; left: 14px; top: 11px; color: var(--color-text-gray);" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+        </div>
+
+        <!-- Right: Actions Menu (Search, AI, Notif, Avatar) -->
+        <div style="display: flex; align-items: center; gap: 16px;">
+          <!-- AI Assistant floating toggle -->
+          <button class="btn btn-tertiary" style="padding: 6px 12px; font-size: 12px; display: flex; align-items: center; gap: 6px; border-color: rgba(0, 212, 255, 0.25);" onclick="App.toggleAiAssistant()">
+            <span style="color: var(--color-primary-cyan);">🤖</span> AI Assistant
+          </button>
+
+          <!-- Notifications shortcut -->
+          <div style="position: relative; cursor: pointer;" onclick="App.switchSubview('notifications')">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: var(--color-text-gray);"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>
+            <span id="top-nav-notif-dot" style="display: none; position: absolute; top: 0; right: 0; width: 8px; height: 8px; background: #ff453a; border-radius: 50%; border: 1.5px solid #0d1b24;"></span>
+          </div>
+
+          <!-- User dropdown toggle -->
+          <div style="position: relative; display: inline-block;" class="user-dropdown-wrapper">
+            <img src="https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150" id="top-nav-avatar" style="width: 32px; height: 32px; border-radius: 50%; border: 1.5px solid var(--color-primary-cyan); cursor: pointer;" onclick="App.toggleUserDropdown()">
+            <div id="top-nav-user-dropdown" style="display: none; position: absolute; right: 0; top: 40px; background: #0c1820; border: 1px solid var(--color-border); border-radius: 8px; width: 160px; box-shadow: 0 10px 25px rgba(0,0,0,0.5); z-index: 999; overflow: hidden;">
+              <a onclick="App.switchSubview('creator-profile-mgmt')" style="display: block; padding: 10px 16px; font-size: 12px; color: #fff; cursor: pointer; text-decoration: none; border-bottom: 1px solid var(--color-border);">My Profile</a>
+              <a onclick="App.switchSubview('creator-settings')" style="display: block; padding: 10px 16px; font-size: 12px; color: #fff; cursor: pointer; text-decoration: none; border-bottom: 1px solid var(--color-border);">Account Settings</a>
+              <a onclick="App.switchSubview('notifications')" style="display: block; padding: 10px 16px; font-size: 12px; color: #fff; cursor: pointer; text-decoration: none; border-bottom: 1px solid var(--color-border);">Help & Support</a>
+              <a onclick="App.handleLogout()" style="display: block; padding: 10px 16px; font-size: 12px; color: #ff453a; cursor: pointer; text-decoration: none;">Logout</a>
+            </div>
+          </div>
+        </div>
+      </header>
+
       <!-- ==================== SUB-VIEW: CREATOR DASHBOARD ==================== -->
       <section id="subview-creator-dashboard" class="subview" style="display: none;">
         <div class="view-header">
@@ -702,6 +804,15 @@
             <div class="suggestion-list" id="dashboard-collabs-list">
               <p class="view-subtitle">No incoming collaboration requests yet.</p>
             </div>
+          </div>
+        </div>
+
+        <!-- Recent Activity -->
+        <div class="glass-card" style="margin-top: 24px;">
+          <h3 style="margin-top:0; margin-bottom: 8px; color: #fff; font-size: 15px;">Recent Platform Activity</h3>
+          <p class="view-subtitle" style="margin-bottom: 20px;">Timeline of your recent system operations, profile audits, and notifications.</p>
+          <div id="dashboard-activity-list" style="display: flex; flex-direction: column; gap: 12px;">
+            <!-- Injected dynamically -->
           </div>
         </div>
       </section>
@@ -1183,62 +1294,130 @@
         </div>
       </section>
 
-      <!-- ==================== SUB-VIEW: CREATOR EARNINGS & TRANSACTIONS ==================== -->
-      <section id="subview-creator-earnings" class="subview" style="display: none;">
+      <!-- ==================== SUB-VIEW: CREATOR INTELLIGENCE ==================== -->
+      <section id="subview-creator-intelligence" class="subview" style="display: none;">
         <div class="view-header">
           <div>
-            <h1 class="view-title">Earnings & Statistics</h1>
-            <p class="view-subtitle">Monitor payouts, track clearings, and view financial performance graphs.</p>
+            <h1 class="view-title">Creator Intelligence</h1>
+            <p class="view-subtitle">Detailed breakdown of your AI-driven positioning, score vectors, and growth plans.</p>
           </div>
         </div>
-        
-        <!-- KPI Row -->
+
+        <div class="dashboard-grid" style="gap: 16px;">
+          <!-- Left Vector: Score Circular Badge & Explanation -->
+          <div class="col-4 glass-card" style="display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 24px; box-sizing: border-box; min-height: 380px;">
+            <h3 style="margin-top: 0; color:#fff; font-size:16px;">Overall AI Score</h3>
+            <div style="position: relative; width: 120px; height: 120px; margin: 20px 0;">
+              <svg width="120" height="120" viewBox="0 0 100 100" style="transform: rotate(-90deg);">
+                <circle cx="50" cy="50" r="44" stroke="rgba(255,255,255,0.03)" stroke-width="8" fill="transparent" />
+                <circle cx="50" cy="50" r="44" stroke="url(#cyan-indigo-grad)" stroke-width="8" fill="transparent" 
+                        stroke-dasharray="276.4" stroke-dashoffset="276.4" id="intel-score-circle-ring" style="transition: stroke-dashoffset 1s ease-in-out;" />
+              </svg>
+              <div style="position: absolute; top:0; left:0; width:100%; height:100%; display:flex; flex-direction:column; align-items:center; justify-content:center;">
+                <span id="intel-badge-score-value" style="font-size: 32px; font-weight: 800; color: #fff;">--</span>
+                <span id="intel-badge-score-label" style="font-size: 9px; color: var(--color-text-gray); text-transform: uppercase; font-weight: 600; margin-top:2px;">Unenriched</span>
+              </div>
+            </div>
+            <p id="intel-score-explanation" class="view-subtitle" style="font-size: 11px; line-height: 1.5; margin: 0; max-width: 250px;">Complete your onboarding calculations to view your AI positioning vector.</p>
+          </div>
+
+          <!-- Middle Vector: Radar Chart -->
+          <div class="col-4 glass-card" style="display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 24px; box-sizing: border-box; min-height: 380px;">
+            <h3 style="margin-top: 0; margin-bottom: 20px; color:#fff; font-size:16px; align-self: flex-start;">Intelligence Vectors</h3>
+            <div id="intel-radar-chart-container" style="width: 100%; display: flex; justify-content: center;">
+              <!-- Rendered via JS SVG -->
+            </div>
+          </div>
+
+          <!-- Right Vector: Score Breakdown -->
+          <div class="col-4 glass-card" style="padding: 24px; box-sizing: border-box; min-height: 380px;">
+            <h3 style="margin-top: 0; margin-bottom: 20px; color:#fff; font-size:16px;">Score Vector Breakdown</h3>
+            <div style="display: flex; flex-direction: column; gap: 16px;">
+              <div>
+                <div style="display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 6px;">
+                  <span style="color: var(--color-text-gray);">Audience Trust Index</span>
+                  <span id="intel-breakdown-trust" style="color: #fff; font-weight: 600;">--</span>
+                </div>
+                <div style="height: 6px; background: rgba(255,255,255,0.05); border-radius: 3px; overflow: hidden;">
+                  <div id="intel-bar-trust" style="height: 100%; background: var(--color-primary-cyan); width: 0%; transition: width 0.8s ease;"></div>
+                </div>
+              </div>
+
+              <div>
+                <div style="display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 6px;">
+                  <span style="color: var(--color-text-gray);">Engagement Index</span>
+                  <span id="intel-breakdown-engagement" style="color: #fff; font-weight: 600;">--</span>
+                </div>
+                <div style="height: 6px; background: rgba(255,255,255,0.05); border-radius: 3px; overflow: hidden;">
+                  <div id="intel-bar-engagement" style="height: 100%; background: var(--color-primary-indigo); width: 0%; transition: width 0.8s ease;"></div>
+                </div>
+              </div>
+
+              <div>
+                <div style="display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 6px;">
+                  <span style="color: var(--color-text-gray);">Regional Influence Index</span>
+                  <span id="intel-breakdown-regional" style="color: #fff; font-weight: 600;">--</span>
+                </div>
+                <div style="height: 6px; background: rgba(255,255,255,0.05); border-radius: 3px; overflow: hidden;">
+                  <div id="intel-bar-regional" style="height: 100%; background: var(--color-primary-green); width: 0%; transition: width 0.8s ease;"></div>
+                </div>
+              </div>
+
+              <div>
+                <div style="display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 6px;">
+                  <span style="color: var(--color-text-gray);">Content Consistency Index</span>
+                  <span id="intel-breakdown-consistency" style="color: #fff; font-weight: 600;">--</span>
+                </div>
+                <div style="height: 6px; background: rgba(255,255,255,0.05); border-radius: 3px; overflow: hidden;">
+                  <div id="intel-bar-consistency" style="height: 100%; background: #fbbf24; width: 0%; transition: width 0.8s ease;"></div>
+                </div>
+              </div>
+
+              <div>
+                <div style="display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 6px;">
+                  <span style="color: var(--color-text-gray);">Brand Readiness Index</span>
+                  <span id="intel-breakdown-readiness" style="color: #fff; font-weight: 600;">--</span>
+                </div>
+                <div style="height: 6px; background: rgba(255,255,255,0.05); border-radius: 3px; overflow: hidden;">
+                  <div id="intel-bar-readiness" style="height: 100%; background: #ec4899; width: 0%; transition: width 0.8s ease;"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- AI Growth suggestions -->
+        <div class="glass-card" style="margin-top: 24px;">
+          <h3 style="margin-top: 0; margin-bottom: 8px; color: #fff; font-size: 16px;">AI Recommendations Plan</h3>
+          <p class="view-subtitle" style="font-size: 12px; margin-bottom: 24px;">Personalized actionable optimizations compiled by Gemini model to grow your audience scores.</p>
+          <div id="intel-suggestions-list">
+            <!-- Injected dynamically -->
+          </div>
+        </div>
+      </section>
+
+      <!-- ==================== SUB-VIEW: CREATOR MY CAMPAIGNS ==================== -->
+      <section id="subview-creator-my-campaigns" class="subview" style="display: none;">
+        <div class="view-header">
+          <div>
+            <h1 class="view-title">My Campaigns</h1>
+            <p class="view-subtitle">Track your partnerships, invitations, and active collaborations.</p>
+          </div>
+        </div>
+
+        <!-- Tab filters -->
         <div class="dashboard-grid" style="margin-bottom: 24px; gap: 16px;">
-          <div class="col-4 glass-card stat-card" style="display:flex; align-items:center; gap:16px; box-sizing:border-box;">
-            <div class="stat-icon-wrapper stat-icon-green" style="font-size:24px; background:rgba(0, 242, 166, 0.1); padding:12px; border-radius:10px;">₹</div>
-            <div>
-              <div class="stat-num" id="earn-stat-total" style="font-size:20px; font-weight:700; color:#fff;">₹45,000</div>
-              <div class="stat-label" style="font-size:10px; color:var(--color-text-gray); margin-top:2px;">TOTAL EARNED</div>
-            </div>
-          </div>
-          
-          <div class="col-4 glass-card stat-card" style="display:flex; align-items:center; gap:16px; box-sizing:border-box;">
-            <div class="stat-icon-wrapper stat-icon-cyan" style="font-size:24px; background:rgba(0, 212, 255, 0.1); padding:12px; border-radius:10px;">⏳</div>
-            <div>
-              <div class="stat-num" id="earn-stat-pending" style="font-size:20px; font-weight:700; color:#fff;">₹15,000</div>
-              <div class="stat-label" style="font-size:10px; color:var(--color-text-gray); margin-top:2px;">PENDING CLEARANCE</div>
-            </div>
-          </div>
-          
-          <div class="col-4 glass-card stat-card" style="display:flex; align-items:center; gap:16px; box-sizing:border-box;">
-            <div class="stat-icon-wrapper stat-icon-indigo" style="font-size:24px; background:rgba(79, 70, 229, 0.1); padding:12px; border-radius:10px;">📈</div>
-            <div>
-              <div class="stat-num" id="earn-stat-active" style="font-size:20px; font-weight:700; color:#fff;">2</div>
-              <div class="stat-label" style="font-size:10px; color:var(--color-text-gray); margin-top:2px;">ACTIVE COLLABS</div>
-            </div>
+          <div class="col-12" style="display: flex; gap: 12px; border-bottom: 1px solid var(--color-border); padding-bottom: 12px; flex-wrap: wrap;">
+            <button class="btn btn-tertiary active-tab" id="tab-mycamps-all" onclick="App.filterMyCampaigns('all')" style="padding: 8px 16px; font-size: 12px;">All Campaigns</button>
+            <button class="btn btn-tertiary" id="tab-mycamps-pending" onclick="App.filterMyCampaigns('pending')" style="padding: 8px 16px; font-size: 12px;">Pending Invitations</button>
+            <button class="btn btn-tertiary" id="tab-mycamps-accepted" onclick="App.filterMyCampaigns('accepted')" style="padding: 8px 16px; font-size: 12px;">Ongoing</button>
+            <button class="btn btn-tertiary" id="tab-mycamps-completed" onclick="App.filterMyCampaigns('completed')" style="padding: 8px 16px; font-size: 12px;">Completed</button>
+            <button class="btn btn-tertiary" id="tab-mycamps-rejected" onclick="App.filterMyCampaigns('rejected')" style="padding: 8px 16px; font-size: 12px;">Declined</button>
           </div>
         </div>
-        
-        <!-- Transactions Table -->
-        <div class="glass-card">
-          <h3 style="margin-top:0; margin-bottom: 16px; color:#fff; font-size:16px;">Payout History</h3>
-          <div style="overflow-x: auto;">
-            <table style="width: 100%; border-collapse: collapse; text-align: left; font-size:13px;" id="creator-transactions-table">
-              <thead>
-                <tr style="border-bottom: 1px solid var(--color-border); color: var(--color-text-muted);">
-                  <th style="padding: 12px 8px;">TRANSACTION ID</th>
-                  <th style="padding: 12px 8px;">CAMPAIGN TITLE</th>
-                  <th style="padding: 12px 8px;">BRAND SPONSOR</th>
-                  <th style="padding: 12px 8px;">AMOUNT</th>
-                  <th style="padding: 12px 8px;">STATUS</th>
-                  <th style="padding: 12px 8px;">DATE</th>
-                </tr>
-              </thead>
-              <tbody id="creator-earnings-list-body">
-                <!-- Injected dynamically -->
-              </tbody>
-            </table>
-          </div>
+
+        <div style="display: flex; flex-direction: column; gap: 16px;" id="mycamps-list-container">
+          <!-- Injected dynamically -->
         </div>
       </section>
 
