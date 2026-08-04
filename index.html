@@ -1,0 +1,1466 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CreatorLens – AI-Powered Regional Creator Sourcing</title>
+  
+  <!-- CSS Stylesheets -->
+  <link rel="stylesheet" href="css/design-system.css">
+  <link rel="stylesheet" href="css/app.css">
+</head>
+<body>
+  
+  <!-- Ambient Backdrop Glows -->
+  <div class="ambient-glow-1"></div>
+  <div class="ambient-glow-2"></div>
+  
+  <!-- Toast Messages -->
+  <div class="toast-container" id="toast-container"></div>
+  
+  <!-- ==================== LANDING VIEW ==================== -->
+  <div id="view-landing" class="landing-container">
+    <div class="bg-grid-mesh"></div>
+    <!-- Header Nav -->
+    <header class="landing-header">
+      <div class="auth-logo" style="margin-bottom: 0;">
+        <svg viewBox="0 0 100 100" width="38" height="38" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <linearGradient id="logo-c-grad-landing" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stop-color="#00F2A6" />
+              <stop offset="50%" stop-color="#00D4FF" />
+              <stop offset="100%" stop-color="#4F46E5" />
+            </linearGradient>
+          </defs>
+          <path d="M 75.45, 24.55 A 36 36 0 1 0 75.45, 75.45" fill="none" stroke="url(#logo-c-grad-landing)" stroke-width="11" stroke-linecap="round" />
+          <circle cx="50" cy="50" r="19" fill="#0D1B24" stroke="rgba(255, 255, 255, 0.08)" stroke-width="1" />
+          <circle cx="50" cy="50" r="14" fill="none" stroke="#00D4FF" stroke-width="2" />
+          <circle cx="50" cy="50" r="11" fill="#111827" />
+          <circle cx="46" cy="46" r="2.5" fill="#FFFFFF" opacity="0.85" />
+          <circle cx="53" cy="53" r="1.2" fill="#FFFFFF" opacity="0.4" />
+          <path d="M 82,14 Q 82,22 74,22 Q 82,22 82,30 Q 82,22 90,22 Q 82,22 82,14 Z" fill="#00F2A6" />
+        </svg>
+        <div class="brand-text" style="font-size: 20px;">creator<span>Lens</span></div>
+      </div>
+      <nav class="landing-nav">
+        <a class="landing-nav-link" href="#/">Home</a>
+        <a class="landing-nav-link" href="#features">Features</a>
+        <a class="landing-nav-link" href="#sandbox">Solutions</a>
+        <a class="landing-nav-link" href="#pricing">Pricing</a>
+        <a class="landing-nav-link" href="#faq">About Us</a>
+        <a class="landing-nav-link" href="#contact">Resources</a>
+      </nav>
+      <div style="display: flex; align-items: center; gap: 8px; margin-right: 12px;">
+        <span class="input-label" style="font-size: 11px; margin-bottom: 0;">THEME:</span>
+        <select class="input-field" style="padding: 4px 8px; width: 130px; font-size: 12px; margin-bottom: 0;" onchange="App.setTheme(this.value)">
+          <option value="glass">Glass Glow (Option 1)</option>
+          <option value="slate">Slate Minimal (Option 2)</option>
+        </select>
+      </div>
+      <div style="display: flex; gap: 16px; align-items: center;">
+        <a class="text-link" style="font-size: 13px; font-weight: 600; cursor: pointer; color: #fff; text-decoration: none;" onclick="App.showAuthLayout('login')">Login</a>
+        <button class="btn btn-primary" style="padding: 8px 16px; font-size: 12px;" onclick="App.showAuthLayout('register')">Get Started</button>
+      </div>
+    </header>
+
+    <!-- Hero Banner -->
+    <section class="landing-hero">
+      <div class="hero-content" style="text-align: left;">
+        <h1 class="hero-glow-title" style="font-size: 46px; line-height: 1.15; letter-spacing: -0.03em; font-weight: 700; margin: 0;">Discover.<br>Evaluate.<br>Collaborate.<br><span style="background: linear-gradient(135deg, var(--color-primary-cyan), var(--color-primary-indigo)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;">Beyond Follower Count.</span></h1>
+        <p class="hero-description" style="font-size: 15px; line-height: 1.7; color: var(--color-text-gray); margin-top: 20px; max-width: 500px;">
+          AI-powered creator intelligence helping brands discover perfect creators while empowering creators to grow with data-driven insights.
+        </p>
+        <div class="hero-buttons" style="margin-top: 28px; display: flex; gap: 12px;">
+          <button class="btn btn-primary" onclick="App.showAuthLayout('register')">Get Started</button>
+          <button class="btn btn-secondary" onclick="App.showDemoVideo()">Watch Demo</button>
+        </div>
+      </div>
+      <div class="hero-visual">
+        <div class="story-stack-container">
+          <!-- Card 1: Vernacular Parser -->
+          <div class="luxury-card story-card card-front" id="story-card-0">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; z-index: 5;">
+              <span style="font-size: 9px; font-weight: 700; color: var(--color-primary-cyan); letter-spacing: 0.05em; text-transform: uppercase;">01 / STEP: VERNACULAR PARSER</span>
+              <div style="display: flex; gap: 4px;">
+                <span class="step-dot active"></span>
+                <span class="step-dot"></span>
+                <span class="step-dot"></span>
+                <span class="step-dot"></span>
+              </div>
+            </div>
+            <h4 style="font-size: 16px; font-weight: 600; margin-bottom: 8px; color: #fff; z-index: 5;">Analyze Local Dialects</h4>
+            <p class="view-subtitle" style="font-size: 11px; line-height: 1.6; margin-bottom: 16px; min-height: 52px; color: #94A3B8; z-index: 5;">
+              Our n8n pipelines fetch transcripts and translate regional languages (Marathi, Bundeli, Telugu) to understand true context.
+            </p>
+            <div style="background: rgba(255,255,255,0.02); border-left: 2px solid var(--color-primary-green); padding: 8px 12px; border-radius: 4px; display: flex; flex-direction: column; gap: 4px; z-index: 5;">
+              <span class="input-label" style="font-size: 8px;">DIALECTS PARSED</span>
+              <span style="font-weight: 600; font-size: 11px; color: var(--color-primary-green);">Marathi, Bundeli, Hindi, Telugu</span>
+            </div>
+          </div>
+
+          <!-- Card 2: CIS Evaluation -->
+          <div class="luxury-card story-card card-middle" id="story-card-1">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; z-index: 5;">
+              <span style="font-size: 9px; font-weight: 700; color: var(--color-primary-cyan); letter-spacing: 0.05em; text-transform: uppercase;">02 / STEP: CIS ENGINE</span>
+              <div style="display: flex; gap: 4px;">
+                <span class="step-dot"></span>
+                <span class="step-dot active"></span>
+                <span class="step-dot"></span>
+                <span class="step-dot"></span>
+              </div>
+            </div>
+            <h4 style="font-size: 16px; font-weight: 600; margin-bottom: 8px; color: #fff; z-index: 5;">Score Trust & Affinities</h4>
+            <p class="view-subtitle" style="font-size: 11px; line-height: 1.6; margin-bottom: 16px; min-height: 52px; color: #94A3B8; z-index: 5;">
+              Evaluates engagement quality, regional relevance, and profile completeness to compute the Creator Intelligence Score (CIS).
+            </p>
+            <div style="background: rgba(255,255,255,0.02); border-left: 2px solid var(--color-primary-cyan); padding: 8px 12px; border-radius: 4px; display: flex; flex-direction: column; gap: 4px; z-index: 5;">
+              <span class="input-label" style="font-size: 8px;">METRIC WEIGHTS</span>
+              <span style="font-weight: 600; font-size: 11px; color: var(--color-primary-cyan);">Trust (25%), Eng (20%), Region (20%)</span>
+            </div>
+          </div>
+
+          <!-- Card 3: Match Algorithm -->
+          <div class="luxury-card story-card card-back" id="story-card-2">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; z-index: 5;">
+              <span style="font-size: 9px; font-weight: 700; color: var(--color-primary-cyan); letter-spacing: 0.05em; text-transform: uppercase;">03 / STEP: MATCH ALGORITHM</span>
+              <div style="display: flex; gap: 4px;">
+                <span class="step-dot"></span>
+                <span class="step-dot"></span>
+                <span class="step-dot active"></span>
+                <span class="step-dot"></span>
+              </div>
+            </div>
+            <h4 style="font-size: 16px; font-weight: 600; margin-bottom: 8px; color: #fff; z-index: 5;">Semantic Brand Matching</h4>
+            <p class="view-subtitle" style="font-size: 11px; line-height: 1.6; margin-bottom: 16px; min-height: 52px; color: #94A3B8; z-index: 5;">
+              Runs campaign brief objectives against regional creator data to output natural language explanation cards.
+            </p>
+            <div style="background: rgba(255,255,255,0.02); border-left: 2px solid var(--color-primary-indigo); padding: 8px 12px; border-radius: 4px; display: flex; flex-direction: column; gap: 4px; z-index: 5;">
+              <span class="input-label" style="font-size: 8px;">MATCH ACCURACY</span>
+              <span style="font-weight: 600; font-size: 11px; color: var(--color-primary-indigo);">94% Campaign Alignment</span>
+            </div>
+          </div>
+
+          <!-- Card 4: Pricing Optimizer -->
+          <div class="luxury-card story-card card-hidden" id="story-card-3">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; z-index: 5;">
+              <span style="font-size: 9px; font-weight: 700; color: var(--color-primary-cyan); letter-spacing: 0.05em; text-transform: uppercase;">04 / STEP: PRICING ENGINE</span>
+              <div style="display: flex; gap: 4px;">
+                <span class="step-dot"></span>
+                <span class="step-dot"></span>
+                <span class="step-dot"></span>
+                <span class="step-dot active"></span>
+              </div>
+            </div>
+            <h4 style="font-size: 16px; font-weight: 600; margin-bottom: 8px; color: #fff; z-index: 5;">Predict Fair Sourcing Cost</h4>
+            <p class="view-subtitle" style="font-size: 11px; line-height: 1.6; margin-bottom: 16px; min-height: 52px; color: #94A3B8; z-index: 5;">
+              Aggregates regional views and engagement to calculate recommended pricing bounds, ensuring transparency.
+            </p>
+            <div style="background: rgba(255,255,255,0.02); border-left: 2px solid var(--color-primary-green); padding: 8px 12px; border-radius: 4px; display: flex; flex-direction: column; gap: 4px; z-index: 5;">
+              <span class="input-label" style="font-size: 8px;">OPTIMIZATION</span>
+              <span style="font-weight: 600; font-size: 11px; color: var(--color-primary-green);">Saves 40% Campaign Sourcing Time</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Sandbox Section -->
+    <section class="sandbox-section" id="sandbox">
+      <div class="section-header-center">
+        <div class="section-tagline">Interactive Preview</div>
+        <h2 class="section-title-big">Test-Drive the Match Engine</h2>
+        <p class="view-subtitle">Click a localization tag below to simulate how CreatorLens parses creator profiles, renders SVG radar metrics, and recommends fair pricing ranges live.</p>
+      </div>
+
+      <div class="sandbox-filters">
+        <button class="sandbox-filter-btn active" id="sbox-tag-marathi" onclick="App.selectSandboxTag('Marathi')">Marathi Focus (Pune)</button>
+        <button class="sandbox-filter-btn" id="sbox-tag-tech" onclick="App.selectSandboxTag('Tech')">Hindi Tech unboxer (Indore)</button>
+        <button class="sandbox-filter-btn" id="sbox-tag-food" onclick="App.selectSandboxTag('Food')">Bundeli Culinary (Indore)</button>
+        <button class="sandbox-filter-btn" id="sbox-tag-fashion" onclick="App.selectSandboxTag('Fashion')">Telugu Lookbooks (Hyderabad)</button>
+      </div>
+
+      <!-- Sandbox Workspace -->
+      <div class="sandbox-workspace dashboard-grid col-12" style="gap: 20px; align-items: stretch;">
+        <!-- Column 1: Profile & Stats (col-4) -->
+        <div class="col-4 luxury-card" style="display: flex; flex-direction: column; gap: 16px; padding: 20px;">
+          <div style="display: flex; align-items: center; gap: 14px;">
+            <img src="" id="sandbox-avatar" style="width: 52px; height: 52px; border-radius: 50%; object-fit: cover; border: 2px solid var(--color-primary-cyan);" alt="Avatar">
+            <div>
+              <h3 id="sandbox-name" style="font-size: 16px; font-weight: 600;">Creator Name</h3>
+              <div style="font-weight: 700; color: #00F2A6; font-size: 13px; margin-top: 2px;" id="sandbox-cis-score">--/100</div>
+            </div>
+          </div>
+          <div class="tags-container" id="sandbox-profile-tags" style="gap: 6px; margin: 4px 0;"></div>
+          <p class="view-subtitle" id="sandbox-summary" style="font-size: 12px; line-height: 1.6; border-left: 2px solid var(--color-primary-indigo); padding-left: 12px; margin: 6px 0; min-height: 48px; color: #94A3B8;"></p>
+          
+          <div style="display: flex; flex-direction: column; gap: 10px; border-top: 1px solid var(--color-border); padding-top: 14px; margin-top: auto;">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+              <span class="input-label" style="font-size: 10px;">FOLLOWERS</span>
+              <span style="font-weight: 600; font-size: 13px; color: #fff;" id="sandbox-followers">0</span>
+            </div>
+            <div style="display: flex; justify-content: space-between; align-items: center; border-top: 1px solid rgba(255,255,255,0.03); padding-top: 6px;">
+              <span class="input-label" style="font-size: 10px;">ENGAGEMENT</span>
+              <span style="font-weight: 600; font-size: 13px; color: var(--color-primary-cyan);" id="sandbox-engagement">0.00%</span>
+            </div>
+            <div style="display: flex; justify-content: space-between; align-items: center; border-top: 1px solid rgba(255,255,255,0.03); padding-top: 6px;">
+              <span class="input-label" style="font-size: 10px;">AVG VIEWS</span>
+              <span style="font-weight: 600; font-size: 13px; color: var(--color-primary-green);" id="sandbox-views">0</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Column 2: Intelligence Radar (col-4) -->
+        <div class="col-4 luxury-card" style="display: flex; flex-direction: column; justify-content: space-between; padding: 20px;">
+          <h4 style="font-size: 14px; letter-spacing: -0.01em; margin-bottom: 10px; font-weight: 600;">5-Axis Score Breakdown</h4>
+          <div class="chart-container" id="sandbox-radar-chart" style="min-height: 220px; display: flex; align-items: center; justify-content: center; flex: 1;"></div>
+        </div>
+
+        <!-- Column 3: Campaign Match & Pricing (col-4) -->
+        <div class="col-4" style="display: flex; flex-direction: column; gap: 20px;">
+          <!-- Donut Match Card -->
+          <div class="luxury-card" style="display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; flex: 1; padding: 20px;">
+            <h4 style="font-size: 14px; margin-bottom: 6px; font-weight: 600;">Campaign Match Score</h4>
+            <div class="score-badge-circle" id="sandbox-donut-chart" style="width: 80px; height: 80px; margin: 4px auto;"></div>
+            <div class="view-subtitle" id="sandbox-match-label" style="font-size: 12px; font-weight: 600; color: #00F2A6;">Excellent Match</div>
+          </div>
+          <!-- Pricing Range Slider Card -->
+          <div class="luxury-card pricing-slider-card" id="sandbox-pricing-box" style="flex: 1.2; padding: 20px;">
+            <!-- Price Slider render -->
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Marketing Features Grid -->
+    <section class="features-section-bg" id="features">
+      <div class="features-grid">
+        <div class="feature-box">
+          <div class="feature-icon-big">
+            <svg viewBox="0 0 24 24" width="32" height="32" stroke="#00F2A6" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line></svg>
+          </div>
+          <h3 class="feature-title-sub">Creator Intelligence Score</h3>
+          <p class="feature-text-desc">Evaluates audience trust, consistency, regional affinity, and brand readiness instead of relying on vanity numbers. Standardized scoring levels help build confidence.</p>
+        </div>
+        <div class="feature-box">
+          <div class="feature-icon-big">
+            <svg viewBox="0 0 24 24" width="32" height="32" stroke="#00D4FF" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+          </div>
+          <h3 class="feature-title-sub">Explainable Match Score</h3>
+          <p class="feature-text-desc">Direct matching algorithm calculating alignment across category, regional city target, languages, budget constraints, and outputs natural language explanations.</p>
+        </div>
+        <div class="feature-box">
+          <div class="feature-icon-big">
+            <svg viewBox="0 0 24 24" width="32" height="32" stroke="#4F46E5" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"></line><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>
+          </div>
+          <h3 class="feature-title-sub">Fair Pricing Sourcing</h3>
+          <p class="feature-text-desc">A data-driven pricing optimizer defining min, recommended, and premium brackets. Promotes transparent, benchmark-based influencer compensations.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- Pricing Section -->
+    <section class="pricing-section" id="pricing" style="padding: 80px 20px; border-top: 1px solid var(--color-border); text-align: center;">
+      <h2 style="font-size: 32px; font-weight: 700; margin-bottom: 12px; letter-spacing: -0.02em;">SaaS Enterprise Pricing</h2>
+      <p class="view-subtitle" style="max-width: 500px; margin: 0 auto 40px auto; color: var(--color-text-gray);">Deploy the industry's smartest creator intelligence system to optimize your campaigns.</p>
+      
+      <div class="dashboard-grid" style="max-width: 900px; margin: 0 auto; gap: 24px;">
+        <!-- Card 1: Starter -->
+        <div class="col-6 luxury-card" style="padding: 40px; display: flex; flex-direction: column; text-align: left; justify-content: space-between; min-height: 380px; box-sizing: border-box;">
+          <div>
+            <span class="tag tag-cyan" style="font-size: 10px; font-weight: 700; padding: 2px 8px; margin-bottom: 16px; display: inline-block;">GROWTH PLAN</span>
+            <h3 style="font-size: 24px; font-weight: 600; color: #fff; margin-bottom: 8px; margin-top:0;">Pilot Sourcing</h3>
+            <p class="view-subtitle" style="font-size: 13px; line-height: 1.6; color: var(--color-text-gray); margin-bottom: 24px;">For growing brands starting regional marketing campaigns with verified scores.</p>
+            <div style="font-size: 36px; font-weight: 700; color: #fff; margin-bottom: 24px;">₹14,999<span style="font-size: 14px; font-weight: 500; color: var(--color-text-muted);"> / month</span></div>
+            <ul style="list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 10px; font-size: 13px; color: #94A3B8;">
+              <li style="display:flex; align-items:center; gap:8px;"><svg viewBox="0 0 24 24" width="14" height="14" stroke="var(--color-primary-cyan)" stroke-width="2" fill="none"><polyline points="20 6 9 17 4 12"></polyline></svg> Access to 500+ Regional Profiles</li>
+              <li style="display:flex; align-items:center; gap:8px;"><svg viewBox="0 0 24 24" width="14" height="14" stroke="var(--color-primary-cyan)" stroke-width="2" fill="none"><polyline points="20 6 9 17 4 12"></polyline></svg> 5-Axis Creator Intelligence Scores</li>
+              <li style="display:flex; align-items:center; gap:8px;"><svg viewBox="0 0 24 24" width="14" height="14" stroke="var(--color-primary-cyan)" stroke-width="2" fill="none"><polyline points="20 6 9 17 4 12"></polyline></svg> 3 Active AI Campaigns</li>
+            </ul>
+          </div>
+          <button class="btn btn-secondary" style="width: 100%; margin-top: 30px;" onclick="App.showAuthLayout('register', 'brand')">Deploy Now →</button>
+        </div>
+        
+        <!-- Card 2: Enterprise -->
+        <div class="col-6 luxury-card" style="padding: 40px; display: flex; flex-direction: column; text-align: left; justify-content: space-between; min-height: 380px; border: 1px solid var(--color-primary-green); box-shadow: 0 0 20px var(--color-glow-green); box-sizing: border-box;">
+          <div>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+              <span class="tag tag-green" style="font-size: 10px; font-weight: 700; padding: 2px 8px; display: inline-block;">MOST POWERFUL</span>
+              <span style="font-size: 10px; font-weight: 600; color: var(--color-primary-green);">PREMIUM OS</span>
+            </div>
+            <h3 style="font-size: 24px; font-weight: 600; color: #fff; margin-bottom: 8px; margin-top:0;">Enterprise Scale</h3>
+            <p class="view-subtitle" style="font-size: 13px; line-height: 1.6; color: var(--color-text-gray); margin-bottom: 24px;">For consumer enterprises requiring deep vernacular profiling and direct n8n integrations.</p>
+            <div style="font-size: 36px; font-weight: 700; color: #fff; margin-bottom: 24px;">₹39,999<span style="font-size: 14px; font-weight: 500; color: var(--color-text-muted);"> / month</span></div>
+            <ul style="list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 10px; font-size: 13px; color: #94A3B8;">
+              <li style="display:flex; align-items:center; gap:8px;"><svg viewBox="0 0 24 24" width="14" height="14" stroke="var(--color-primary-green)" stroke-width="2" fill="none"><polyline points="20 6 9 17 4 12"></polyline></svg> Unlimited Regional Profiles</li>
+              <li style="display:flex; align-items:center; gap:8px;"><svg viewBox="0 0 24 24" width="14" height="14" stroke="var(--color-primary-green)" stroke-width="2" fill="none"><polyline points="20 6 9 17 4 12"></polyline></svg> Custom n8n Webhook Connections</li>
+              <li style="display:flex; align-items:center; gap:8px;"><svg viewBox="0 0 24 24" width="14" height="14" stroke="var(--color-primary-green)" stroke-width="2" fill="none"><polyline points="20 6 9 17 4 12"></polyline></svg> Bloomberg Pricing Sourcing Engine</li>
+              <li style="display:flex; align-items:center; gap:8px;"><svg viewBox="0 0 24 24" width="14" height="14" stroke="var(--color-primary-green)" stroke-width="2" fill="none"><polyline points="20 6 9 17 4 12"></polyline></svg> Dedicated Account Match Coach</li>
+            </ul>
+          </div>
+          <button class="btn btn-primary" style="width: 100%; margin-top: 30px;" onclick="App.showAuthLayout('register', 'brand')">Deploy Enterprise →</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- FAQ Section -->
+    <section class="faq-section" id="faq" style="padding: 80px 20px; border-top: 1px solid var(--color-border); max-width: 800px; margin: 0 auto; box-sizing: border-box;">
+      <h2 style="font-size: 32px; font-weight: 700; margin-bottom: 12px; text-align: center; letter-spacing: -0.02em;">Frequently Answered Questions</h2>
+      <p class="view-subtitle" style="text-align: center; margin-bottom: 40px; color: var(--color-text-gray);">Technical specifications, matched scoring logic, and workflow integrations.</p>
+      
+      <div style="display: flex; flex-direction: column; gap: 16px;">
+        <div class="luxury-card" style="padding: 24px;">
+          <h4 style="font-size: 15px; font-weight: 600; color: #fff; margin-bottom: 8px; margin-top:0;">How is the Creator Intelligence Score (CIS) calculated?</h4>
+          <p class="view-subtitle" style="font-size: 13px; line-height: 1.6; color: var(--color-text-gray); margin-bottom: 0;">Our score engine weights engagement metrics (20%), audience trust parameters (25%), dialect and regional matching consistency (20%), readiness (15%), and completeness (20%) using custom calculations.</p>
+        </div>
+        
+        <div class="luxury-card" style="padding: 24px;">
+          <h4 style="font-size: 15px; font-weight: 600; color: #fff; margin-bottom: 8px; margin-top:0;">Can I hook this up to my own CRM or Slack channels?</h4>
+          <p class="view-subtitle" style="font-size: 13px; line-height: 1.6; color: var(--color-text-gray); margin-bottom: 0;">Yes! Switch settings to Live Integration Mode to configure direct n8n webhook web URLs. Executing workflow chains automatically broadcasts notifications to Slack/Discord dashboards.</p>
+        </div>
+        
+        <div class="luxury-card" style="padding: 24px;">
+          <h4 style="font-size: 15px; font-weight: 600; color: #fff; margin-bottom: 8px; margin-top:0;">What language systems does the vernacular parser support?</h4>
+          <p class="view-subtitle" style="font-size: 13px; line-height: 1.6; color: var(--color-text-gray); margin-bottom: 0;">The pipeline parses and semantically translates transcripts in Hindi, Marathi, Telugu, Bundeli, and Gujarati, mapping context back to target demographics.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- Contact Section -->
+    <section class="contact-section" id="contact" style="padding: 80px 20px; border-top: 1px solid var(--color-border); text-align: center;">
+      <div class="luxury-card" style="max-width: 600px; margin: 0 auto; padding: 40px; box-sizing: border-box;">
+        <h2 style="font-size: 28px; font-weight: 700; margin-bottom: 8px; letter-spacing: -0.02em; margin-top:0;">Connect with Sourcing Architects</h2>
+        <p class="view-subtitle" style="font-size: 13px; color: var(--color-text-gray); margin-bottom: 24px;">Request a dedicated tour of our n8n integrations, pricing rule configurations, or custom API brokers.</p>
+        
+        <form onsubmit="event.preventDefault(); alert('Request received! An AI match engineer will contact you shortly.')" style="display:flex; flex-direction:column; gap:12px; text-align:left;">
+          <div class="input-group" style="margin-bottom: 0;">
+            <label class="input-label">CORPORATE EMAIL</label>
+            <input type="email" class="input-field" placeholder="you@company.com" required>
+          </div>
+          <div class="input-group" style="margin-bottom: 0;">
+            <label class="input-label">INQUIRY DETAIL</label>
+            <textarea class="input-field" style="min-height: 80px; resize: none;" placeholder="Tell us about your campaign objectives..."></textarea>
+          </div>
+          <button type="submit" class="btn btn-primary" style="margin-top: 10px; width: 100%;">Send Brief →</button>
+        </form>
+      </div>
+    </section>
+  </div>
+
+  <!-- ==================== AUTH VIEW ==================== -->
+  <div id="view-auth" class="auth-container-split" style="display: none;">
+    <div class="bg-grid-mesh"></div>
+    <div style="position: absolute; top: 30px; left: 30px; z-index: 100;">
+      <a onclick="window.location.hash = '#/'" class="text-link" style="font-size: 14px; cursor: pointer; font-weight: 600;">
+        ← Back to Home
+      </a>
+    </div>
+    
+    <!-- Left panel: Branding / Visuals -->
+    <div class="auth-left-panel">
+      <div class="auth-left-glow-1"></div>
+      <div class="auth-left-glow-2"></div>
+      <div class="auth-left-content">
+        <!-- Styled Lens C logo -->
+        <div class="auth-left-logo">
+          <svg viewBox="0 0 100 100" width="60" height="60" xmlns="http://www.w3.org/2000/svg">
+            <defs>
+              <linearGradient id="logo-c-grad-auth" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stop-color="#00F2A6" />
+                <stop offset="50%" stop-color="#00D4FF" />
+                <stop offset="100%" stop-color="#4F46E5" />
+              </linearGradient>
+            </defs>
+            <path d="M 75.45, 24.55 A 36 36 0 1 0 75.45, 75.45" fill="none" stroke="url(#logo-c-grad-auth)" stroke-width="11" stroke-linecap="round" />
+            <circle cx="50" cy="50" r="19" fill="#0D1B24" stroke="rgba(255, 255, 255, 0.08)" stroke-width="1" />
+            <circle cx="50" cy="50" r="14" fill="none" stroke="#00D4FF" stroke-width="2" />
+            <circle cx="50" cy="50" r="11" fill="#111827" />
+            <circle cx="46" cy="46" r="2.5" fill="#FFFFFF" opacity="0.85" />
+            <circle cx="53" cy="53" r="1.2" fill="#FFFFFF" opacity="0.4" />
+            <path d="M 82,14 Q 82,22 74,22 Q 82,22 82,30 Q 82,22 90,22 Q 82,22 82,14 Z" fill="#00F2A6" />
+          </svg>
+          <div class="auth-left-brand-text">creator<span>Lens</span></div>
+        </div>
+        <h2 class="auth-left-quote">Your Creator Journey Starts Here.</h2>
+        <p class="auth-left-desc">Welcome to the Luxury AI Operating System for Creator Intelligence. Measure true regional affinity, engagement trust, and unlock fair pricing benchmarks.</p>
+        
+        <!-- Floating mini dashboard preview -->
+        <div class="auth-floating-preview-card luxury-card">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+            <span style="font-size:9px; color:var(--color-primary-green); font-weight:700;">LIVE METRICS EVALUATION</span>
+            <span class="tag tag-green" style="font-size:9px; padding:1px 6px;">Active</span>
+          </div>
+          <div style="display:flex; gap:12px; align-items:center;">
+            <div>
+              <span class="input-label" style="font-size:8px;">CREATOR INTELLIGENCE</span>
+              <div style="font-weight:700; color:#00F2A6; font-size:16px;">94 / 100 CIS</div>
+            </div>
+            <div style="margin-left:auto; text-align:right;">
+              <span class="input-label" style="font-size:8px;">ENGAGEMENT TRUST</span>
+              <div style="font-weight:700; color:#00D4FF; font-size:16px;">95% High</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Right panel: Credentials Form -->
+    <div class="auth-right-panel">
+      <div class="auth-card-wrapper">
+        <div class="auth-card luxury-card">
+          <!-- Main Sign In/Up Form Panel -->
+          <div id="auth-main-panel">
+            <div class="auth-header">
+              <h3 style="font-size: 20px; font-weight: 600; color:#fff; margin-top:0;">Access CreatorLens</h3>
+              <p class="auth-subtitle" style="font-size:12px; color:var(--color-text-gray); margin-top:4px;">Discover. Evaluate. Collaborate. Beyond Follower Count.</p>
+            </div>
+            
+            <div class="auth-tabs" style="margin-top:20px;">
+              <div class="auth-tab active" id="tab-login" onclick="App.setAuthTab('login')">Sign In</div>
+              <div class="auth-tab" id="tab-register" onclick="App.setAuthTab('register')">Register</div>
+            </div>
+            
+            <!-- Social Login Panel -->
+            <div style="display:flex; flex-direction:column; gap:10px; margin-bottom:20px; margin-top:20px;">
+              <button type="button" class="btn btn-tertiary" style="width:100%; font-size:12px; padding:10px; border-radius:8px;" onclick="App.handleSocialLogin('Google')">
+                <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor" style="margin-right:6px; display:inline-block; vertical-align:middle;"><path d="M12.24 10.285V14.4h6.887c-.648 2.41-2.519 4.114-5.136 4.114A5.99 5.99 0 0 1 8 12.5a5.99 5.99 0 0 1 5.99-6.024c1.65 0 3.167.636 4.316 1.674l3.125-3.125A10.02 10.02 0 0 0 13.99 2 9.99 9.99 0 0 0 4 12.012a9.99 9.99 0 0 0 9.99 9.988c5.44 0 9.878-4.103 9.878-10.02 0-.648-.078-1.272-.212-1.874H12.24Z"/></svg>
+                Continue with Google
+              </button>
+              <button type="button" class="btn btn-tertiary" style="width:100%; font-size:12px; padding:10px; border-radius:8px;" onclick="App.toggleOtpLogin()">
+                <span id="otp-toggle-btn-text">Use OTP Login</span>
+              </button>
+            </div>
+            
+            <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 20px;">
+              <div style="flex:1; height:1px; background:rgba(255,255,255,0.05);"></div>
+              <span style="font-size:9px; color:var(--color-text-muted); font-weight:600; letter-spacing:0.05em;">OR CREDENTIALS</span>
+              <div style="flex:1; height:1px; background:rgba(255,255,255,0.05);"></div>
+            </div>
+            
+            <form id="auth-form" onsubmit="App.handleAuthSubmit(event)">
+              <div class="input-group">
+                <label class="input-label" for="auth-email">EMAIL ADDRESS</label>
+                <input type="email" id="auth-email" class="input-field" placeholder="Enter your email address" required>
+              </div>
+              
+              <div class="input-group" id="password-input-group">
+                <label class="input-label" for="auth-password" style="display:flex; justify-content:space-between; align-items:center; width: 100%;">
+                  PASSWORD
+                  <a class="text-link" style="font-size:11px; text-decoration:none; font-weight:400;" onclick="App.showForgotPanel()">Forgot Password?</a>
+                </label>
+                <input type="password" id="auth-password" class="input-field" placeholder="Enter your password">
+              </div>
+              
+              <div class="input-group" id="otp-input-group" style="display: none;">
+                <label class="input-label" for="auth-otp">ONE TIME PASSWORD (OTP)</label>
+                <input type="text" id="auth-otp" class="input-field" placeholder="Enter 6-digit OTP code">
+              </div>
+              
+              -- Registration Role selector (hidden in login)
+              <div class="input-group" id="reg-role-group" style="display: none;">
+                <label class="input-label">I AM REGISTERING AS A:</label>
+                <div class="custom-select" id="custom-role-select">
+                  <div class="custom-select-trigger" onclick="App.toggleCustomSelect(event)">
+                    <span id="custom-role-selected-text">Regional Content Creator</span>
+                    <span class="custom-select-arrow">▼</span>
+                  </div>
+                  <div class="custom-select-options">
+                    <div class="custom-select-option active" data-value="creator" onclick="App.selectCustomOption(event, 'creator', 'Regional Content Creator')">Regional Content Creator</div>
+                    <div class="custom-select-option" data-value="brand" onclick="App.selectCustomOption(event, 'brand', 'Brand Marketing Manager')">Brand Marketing Manager</div>
+                  </div>
+                </div>
+                <select id="auth-role" style="display: none;">
+                  <option value="creator" selected>Regional Content Creator</option>
+                  <option value="brand">Brand Marketing Manager</option>
+                </select>
+              </div>
+              
+              <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 20px;" id="auth-submit-btn">
+                Login Account →
+              </button>
+            </form>
+          </div>
+
+          <!-- OTP Verification Step Panel -->
+          <div id="auth-otp-verify-panel" style="display: none;">
+            <div class="auth-header" style="text-align: center; margin-bottom: 24px;">
+              <h3 style="font-size: 20px; font-weight: 600; color:#fff; margin-top: 0;">Verify Your Identity</h3>
+              <p class="auth-subtitle" style="font-size:12px; color:var(--color-text-gray); margin-top:4px;">We sent a 6-digit verification code to <strong id="otp-sent-target-email" style="color: #fff;">you@email.com</strong></p>
+            </div>
+            
+            <form onsubmit="App.verifyOtpCode(event)" style="display:flex; flex-direction:column; gap:16px;">
+              <div class="input-group">
+                <label class="input-label" for="verify-otp-input">6-DIGIT VERIFICATION CODE</label>
+                <input type="text" id="verify-otp-input" class="input-field" maxlength="6" placeholder="0 0 0 0 0 0" style="text-align: center; letter-spacing: 8px; font-size: 18px; font-weight: 700; width: 100%; box-sizing: border-box;" required>
+              </div>
+              
+              <div style="display: flex; justify-content: space-between; align-items: center; font-size: 12px; margin: 4px 0;">
+                <span style="color: var(--color-text-muted);" id="otp-timer-label">Resend code in <strong id="otp-countdown-sec" style="color: var(--color-primary-cyan);">60</strong>s</span>
+                <a class="text-link" id="otp-resend-btn" style="pointer-events: none; opacity: 0.4; font-size: 12px; text-decoration: none;" onclick="App.resendOtpCode()">Resend OTP</a>
+              </div>
+              
+              <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 10px;">
+                Verify Code & Sign In →
+              </button>
+              <a class="text-link" style="font-size: 12px; text-align: center; display: block; margin-top: 10px; text-decoration: none;" onclick="App.cancelOtpVerification()">
+                ← Back to Login
+              </a>
+            </form>
+          </div>
+
+          <!-- Forgot Password Panel -->
+          <div id="auth-forgot-panel" style="display: none;">
+            <div class="auth-header" style="text-align: center; margin-bottom: 24px;">
+              <h3 style="font-size: 20px; font-weight: 600; color:#fff; margin-top: 0;">Recover Password</h3>
+              <p class="auth-subtitle" style="font-size:12px; color:var(--color-text-gray); margin-top:4px;">Enter your email to receive a recovery reset link.</p>
+            </div>
+            
+            <form onsubmit="App.handleForgotPasswordSubmit(event)" style="display:flex; flex-direction:column; gap:16px;">
+              <div class="input-group">
+                <label class="input-label" for="forgot-email">EMAIL ADDRESS</label>
+                <input type="email" id="forgot-email" class="input-field" placeholder="Enter registered email address" required>
+              </div>
+              
+              <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 10px;">
+                Send Recovery Link →
+              </button>
+              <a class="text-link" style="font-size: 12px; text-align: center; display: block; margin-top: 10px; text-decoration: none;" onclick="App.cancelForgotFlow()">
+                ← Back to Login
+              </a>
+            </form>
+          </div>
+
+          <!-- Reset Password Panel -->
+          <div id="auth-reset-panel" style="display: none;">
+            <div class="auth-header" style="text-align: center; margin-bottom: 24px;">
+              <h3 style="font-size: 20px; font-weight: 600; color:#fff; margin-top: 0;">Reset Password</h3>
+              <p class="auth-subtitle" style="font-size:12px; color:var(--color-text-gray); margin-top:4px;">Enter your new authentication credentials.</p>
+            </div>
+            
+            <form onsubmit="App.handleResetPasswordSubmit(event)" style="display:flex; flex-direction:column; gap:16px;">
+              <div class="input-group">
+                <label class="input-label" for="reset-password">NEW PASSWORD</label>
+                <input type="password" id="reset-password" class="input-field" placeholder="Enter new secure password" required>
+              </div>
+              <div class="input-group">
+                <label class="input-label" for="reset-password-confirm">CONFIRM NEW PASSWORD</label>
+                <input type="password" id="reset-password-confirm" class="input-field" placeholder="Re-enter new secure password" required>
+              </div>
+              
+              <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 10px;">
+                Update Password & Login →
+              </button>
+              <a class="text-link" style="font-size: 12px; text-align: center; display: block; margin-top: 10px; text-decoration: none;" onclick="App.cancelForgotFlow()">
+                ← Back to Login
+              </a>
+            </form>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <!-- ==================== MAIN APPLICATION VIEW ==================== -->
+  <div id="view-main" class="app-container" style="display: none;">
+    
+    <!-- SIDEBAR NAV -->
+    <aside class="sidebar">
+      <div class="sidebar-logo">
+        <svg viewBox="0 0 100 100" width="36" height="36" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <linearGradient id="logo-c-grad-sidebar" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stop-color="#00F2A6" />
+              <stop offset="50%" stop-color="#00D4FF" />
+              <stop offset="100%" stop-color="#4F46E5" />
+            </linearGradient>
+          </defs>
+          <path d="M 75.45, 24.55 A 36 36 0 1 0 75.45, 75.45" fill="none" stroke="url(#logo-c-grad-sidebar)" stroke-width="11" stroke-linecap="round" />
+          <circle cx="50" cy="50" r="19" fill="#0D1B24" stroke="rgba(255, 255, 255, 0.08)" stroke-width="1" />
+          <circle cx="50" cy="50" r="14" fill="none" stroke="#00D4FF" stroke-width="2" />
+          <circle cx="50" cy="50" r="11" fill="#111827" />
+          <circle cx="46" cy="46" r="2.5" fill="#FFFFFF" opacity="0.85" />
+          <circle cx="53" cy="53" r="1.2" fill="#FFFFFF" opacity="0.4" />
+          <path d="M 82,14 Q 82,22 74,22 Q 82,22 82,30 Q 82,22 90,22 Q 82,22 82,14 Z" fill="#00F2A6" />
+        </svg>
+        <div class="brand-text" style="font-size: 20px;">creator<span>Lens</span></div>
+      </div>
+      
+      <nav class="sidebar-menu" id="sidebar-menu-list">
+        <!-- Rendered dynamically based on role -->
+      </nav>
+      
+      <div class="sidebar-footer">
+        <div class="user-avatar" id="nav-user-avatar">U</div>
+        <div class="user-info">
+          <div class="user-name" id="nav-user-name">User Account</div>
+          <div class="user-role" id="nav-user-role">Creator</div>
+        </div>
+        <!-- Logout icon button -->
+        <span class="logout-icon" onclick="App.handleLogout()" title="Sign Out">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+            <polyline points="16 17 21 12 16 7"></polyline>
+            <line x1="21" y1="12" x2="9" y2="12"></line>
+          </svg>
+        </span>
+      </div>
+    </aside>
+    
+    <!-- CONTENT MAIN CONTAINER -->
+    <main class="main-content">
+      
+      <!-- ==================== SUB-VIEW: CREATOR DASHBOARD ==================== -->
+      <section id="subview-creator-dashboard" class="subview" style="display: none;">
+        <div class="view-header">
+          <div>
+            <h1 class="view-title">Creator Dashboard</h1>
+            <p class="view-subtitle" id="creator-dashboard-subtitle">Welcome back! Manage your intelligence metrics.</p>
+          </div>
+          <button class="btn btn-secondary" onclick="App.switchSubview('creator-profile')">Update Profile</button>
+        </div>
+        
+        <!-- Stats Row -->
+        <div class="dashboard-grid">
+          <div class="col-4 glass-card stat-card">
+            <div class="stat-icon-wrapper stat-icon-green" style="display:inline-flex; align-items:center; justify-content:center;">
+              <svg viewBox="0 0 24 24" width="20" height="20" stroke="#00F2A6" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+            </div>
+            <div>
+              <div class="stat-num" id="stat-followers">0</div>
+              <div class="stat-label">TOTAL FOLLOWERS</div>
+            </div>
+          </div>
+          
+          <div class="col-4 glass-card stat-card">
+            <div class="stat-icon-wrapper stat-icon-cyan" style="display:inline-flex; align-items:center; justify-content:center;">
+              <svg viewBox="0 0 24 24" width="20" height="20" stroke="#00D4FF" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"></polyline><polyline points="17 6 23 6 23 12"></polyline></svg>
+            </div>
+            <div>
+              <div class="stat-num" id="stat-engagement">0.00%</div>
+              <div class="stat-label">ENGAGEMENT RATE</div>
+            </div>
+          </div>
+          
+          <div class="col-4 glass-card stat-card">
+            <div class="stat-icon-wrapper stat-icon-indigo" style="display:inline-flex; align-items:center; justify-content:center;">
+              <svg viewBox="0 0 24 24" width="20" height="20" stroke="#4F46E5" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="20" rx="2.18" ry="2.18"></rect><line x1="7" y1="2" x2="7" y2="22"></line><line x1="17" y1="2" x2="17" y2="22"></line><line x1="2" y1="12" x2="22" y2="12"></line><line x1="2" y1="7" x2="7" y2="7"></line><line x1="2" y1="17" x2="7" y2="17"></line><line x1="17" y1="17" x2="22" y2="17"></line><line x1="17" y1="7" x2="22" y2="7"></line></svg>
+            </div>
+            <div>
+              <div class="stat-num" id="stat-views">0</div>
+              <div class="stat-label">AVERAGE VIEWS</div>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Charts Layout -->
+        <div class="dashboard-grid">
+          <!-- Left: Radar Chart -->
+          <div class="col-8 luxury-card">
+            <h3>Creator Intelligence Radar</h3>
+            <p class="view-subtitle" style="margin-bottom: 20px;">AI-generated assessment of profile metrics.</p>
+            <div class="chart-container" id="radar-chart-container"></div>
+          </div>
+          
+          <!-- Right: Circular Score Badge -->
+          <div class="col-4 luxury-card" style="display: flex; flex-direction: column; justify-content: center;">
+            <div class="score-badge-container">
+              <div class="score-badge-circle">
+                <svg viewBox="0 0 100 100" width="100%" height="100%" style="overflow: visible;">
+                  <circle cx="50" cy="50" r="44" fill="none" stroke="rgba(255,255,255,0.05)" stroke-width="6" />
+                  <circle cx="50" cy="50" r="44" fill="none" stroke="url(#score-ring-grad)" stroke-width="6" 
+                          id="score-circle-ring" stroke-dasharray="276.4" stroke-dashoffset="276.4" 
+                          stroke-linecap="round" transform="rotate(-90 50 50)" />
+                  <defs>
+                    <linearGradient id="score-ring-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+                      <stop offset="0%" stop-color="#00F2A6" />
+                      <stop offset="100%" stop-color="#00D4FF" />
+                    </linearGradient>
+                  </defs>
+                </svg>
+                <div class="score-val" id="badge-score-value">--</div>
+              </div>
+              <div>
+                <h4 class="score-lbl" id="badge-score-label">Calculating...</h4>
+                <p class="view-subtitle" style="margin-top: 4px;">CREATOR INTELLIGENCE SCORE</p>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Suggestions & Request Grid -->
+        <div class="dashboard-grid">
+          <!-- AI suggestions -->
+          <div class="col-6 glass-card">
+            <h3>AI Coaching & Improvement Suggestions</h3>
+            <p class="view-subtitle" style="margin-bottom: 20px;">Complete these steps to increase discoverability.</p>
+            <div class="suggestion-list" id="dashboard-suggestions-list">
+              <p class="view-subtitle">No suggestions available. Please complete your profile parameters first.</p>
+            </div>
+          </div>
+          
+          <!-- Collaboration Requests -->
+          <div class="col-6 glass-card">
+            <h3>Inbound Brand Requests</h3>
+            <p class="view-subtitle" style="margin-bottom: 20px;">Manage pricing offers and collaboration invitations.</p>
+            <div class="suggestion-list" id="dashboard-collabs-list">
+              <p class="view-subtitle">No incoming collaboration requests yet.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+      
+      <!-- ==================== SUB-VIEW: CREATOR PROFILE UPDATE (ONBOARDING WIZARD) ==================== -->
+      <section id="subview-creator-profile" class="subview" style="display: none;">
+        <div class="view-header">
+          <div>
+            <h1 class="view-title">Creator Portal Onboarding</h1>
+            <p class="view-subtitle" id="wizard-subtitle">Step 1 of 8: Welcome to CreatorLens</p>
+          </div>
+          <button class="btn btn-tertiary" onclick="App.switchSubview('creator-dashboard')">Exit Wizard</button>
+        </div>
+        
+        <!-- Onboarding Progress Indicator Bar -->
+        <div style="width: 100%; height: 6px; background: var(--color-surface-darker); border-radius: 3px; margin-bottom: 30px; position: relative; overflow: hidden;">
+          <div id="onboarding-progress-bar" style="width: 12.5%; height: 100%; background: linear-gradient(90deg, var(--color-primary-cyan), var(--color-primary-green)); transition: width 0.4s ease;"></div>
+        </div>
+
+        <div class="glass-card" style="max-width: 700px; margin: 0 auto; min-height: 400px; display: flex; flex-direction: column; justify-content: space-between; padding: 32px; box-sizing: border-box;">
+          
+          <!-- Step 1: Welcome -->
+          <div class="wizard-step" id="wstep-1">
+            <div style="text-align: center; padding: 30px 10px;">
+              <svg viewBox="0 0 24 24" width="64" height="64" stroke="var(--color-primary-cyan)" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round" style="margin-bottom: 24px;"><polygon points="23 7 16 12 23 17 23 7"></polygon><rect x="1" y="5" width="15" height="14" rx="2" ry="2"></rect></svg>
+              <h2 style="font-size: 24px; color: #fff; margin-bottom: 12px; margin-top: 0;">Welcome to CreatorLens</h2>
+              <p class="view-subtitle" style="font-size: 14px; line-height: 1.7; max-width: 500px; margin: 0 auto; color: var(--color-text-gray);">Build your structured regional creator profile to allow premium brands to match campaigns, measure your target affinity, and calculate recommended pricing bounds.</p>
+            </div>
+          </div>
+          
+          <!-- Step 2: Personal Details -->
+          <div class="wizard-step" id="wstep-2" style="display: none;">
+            <h3 style="font-size: 18px; color: #fff; margin-bottom: 20px; margin-top: 0;">Personal Details</h3>
+            <div class="dashboard-grid" style="gap: 16px;">
+              <div class="col-6 input-group">
+                <label class="input-label">FULL NAME</label>
+                <input type="text" id="ob-name" class="input-field" placeholder="Anjali Verma">
+              </div>
+              <div class="col-6 input-group">
+                <label class="input-label">AVATAR URL</label>
+                <input type="url" id="ob-avatar" class="input-field" placeholder="https://images.unsplash.com/...">
+              </div>
+              <div class="col-12 input-group">
+                <label class="input-label">BIO</label>
+                <textarea id="ob-bio" class="input-field" rows="2" placeholder="Tell brands about your focus..."></textarea>
+              </div>
+              <div class="col-4 input-group">
+                <label class="input-label">CITY</label>
+                <input type="text" id="ob-city" class="input-field" placeholder="Indore">
+              </div>
+              <div class="col-4 input-group">
+                <label class="input-label">STATE</label>
+                <input type="text" id="ob-state" class="input-field" placeholder="Madhya Pradesh">
+              </div>
+              <div class="col-4 input-group">
+                <label class="input-label">COUNTRY</label>
+                <input type="text" id="ob-country" class="input-field" placeholder="India">
+              </div>
+            </div>
+          </div>
+          
+          <!-- Step 3: Languages -->
+          <div class="wizard-step" id="wstep-3" style="display: none;">
+            <h3 style="font-size: 18px; color: #fff; margin-bottom: 8px; margin-top: 0;">Languages</h3>
+            <p class="view-subtitle" style="font-size: 12px; margin-bottom: 24px;">Select the dialects and regional languages you use in your content.</p>
+            <div style="display: flex; flex-wrap: wrap; gap: 12px;" id="ob-lang-chips">
+              <!-- Rendered via JS -->
+            </div>
+          </div>
+          
+          <!-- Step 4: Categories -->
+          <div class="wizard-step" id="wstep-4" style="display: none;">
+            <h3 style="font-size: 18px; color: #fff; margin-bottom: 8px; margin-top: 0;">Categories</h3>
+            <p class="view-subtitle" style="font-size: 12px; margin-bottom: 24px;">Select your primary content niches (Select all that apply).</p>
+            <div class="dashboard-grid" style="gap: 16px;" id="ob-category-cards">
+              <!-- Rendered via JS -->
+            </div>
+          </div>
+          
+          <!-- Step 5: Social Profiles -->
+          <div class="wizard-step" id="wstep-5" style="display: none;">
+            <h3 style="font-size: 18px; color: #fff; margin-bottom: 8px; margin-top: 0;">Social Links</h3>
+            <p class="view-subtitle" style="font-size: 12px; margin-bottom: 24px;">Connect your social media footprint.</p>
+            <div class="dashboard-grid" style="gap: 16px;">
+              <div class="col-6 input-group">
+                <label class="input-label">INSTAGRAM HANDLE</label>
+                <input type="text" id="ob-ig" class="input-field" placeholder="@username">
+              </div>
+              <div class="col-6 input-group">
+                <label class="input-label">YOUTUBE CHANNEL URL</label>
+                <input type="text" id="ob-yt" class="input-field" placeholder="youtube.com/c/channel">
+              </div>
+              <div class="col-6 input-group">
+                <label class="input-label">LINKEDIN URL</label>
+                <input type="text" id="ob-li" class="input-field" placeholder="linkedin.com/in/username">
+              </div>
+              <div class="col-6 input-group">
+                <label class="input-label">FACEBOOK URL</label>
+                <input type="text" id="ob-fb" class="input-field" placeholder="facebook.com/username">
+              </div>
+              <div class="col-12 input-group">
+                <label class="input-label">PERSONAL WEBSITE</label>
+                <input type="url" id="ob-web" class="input-field" placeholder="https://mywebsite.com">
+              </div>
+            </div>
+          </div>
+          
+          <!-- Step 6: Audience & Pricing -->
+          <div class="wizard-step" id="wstep-6" style="display: none;">
+            <h3 style="font-size: 18px; color: #fff; margin-bottom: 20px; margin-top: 0;">Audience & Collab Pricing</h3>
+            <div class="dashboard-grid" style="gap: 16px;">
+              <div class="col-6 input-group">
+                <label class="input-label">FOLLOWER COUNT</label>
+                <input type="number" id="ob-followers" class="input-field" placeholder="68000">
+              </div>
+              <div class="col-6 input-group">
+                <label class="input-label">AVERAGE VIDEO VIEWS</label>
+                <input type="number" id="ob-views" class="input-field" placeholder="12400">
+              </div>
+              <div class="col-4 input-group">
+                <label class="input-label">ENGAGEMENT RATE (%)</label>
+                <input type="number" step="0.01" id="ob-engagement" class="input-field" placeholder="7.82">
+              </div>
+              <div class="col-4 input-group">
+                <label class="input-label">MIN COLLAB COST (₹)</label>
+                <input type="number" id="ob-price-min" class="input-field" placeholder="15000">
+              </div>
+              <div class="col-4 input-group">
+                <label class="input-label">PREMIUM COLLAB COST (₹)</label>
+                <input type="number" id="ob-price-prem" class="input-field" placeholder="25000">
+              </div>
+            </div>
+          </div>
+          
+          <!-- Step 7: AI Processing Animation -->
+          <div class="wizard-step" id="wstep-7" style="display: none;">
+            <div style="text-align: center; padding: 40px 10px;">
+              <div class="spinner" style="margin: 0 auto 24px auto; width: 48px; height: 48px; border-width: 4px;"></div>
+              <h3 style="font-size: 20px; color: #fff; margin-bottom: 8px;">Scanning Your Content & Metrics...</h3>
+              <p class="view-subtitle" style="font-size: 13px; color: var(--color-primary-cyan); margin-bottom: 24px;">WF-01 to WF-03: n8n profile calculations running</p>
+              
+              <div style="background: rgba(0,0,0,0.3); border-radius: 12px; border: 1px solid var(--color-border); padding: 16px; text-align: left; max-width: 400px; margin: 0 auto; display: flex; flex-direction: column; gap: 8px;" id="ob-loader-steps">
+                <!-- Appended logs -->
+              </div>
+            </div>
+          </div>
+          
+          <!-- Step 8: AI Summary Review -->
+          <div class="wizard-step" id="wstep-8" style="display: none;">
+            <h3 style="font-size: 18px; color: #fff; margin-bottom: 4px; margin-top: 0; text-align: center;">AI Analysis Profile Compiled</h3>
+            <p class="view-subtitle" style="font-size: 12px; margin-bottom: 20px; text-align: center;">Review your score metrics and recommendations before finalizing onboarding.</p>
+            
+            <div class="dashboard-grid" style="gap: 20px; align-items: center; margin-bottom: 10px;">
+              <div class="col-6 luxury-card" style="display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; min-height: 200px; box-sizing: border-box;">
+                <span class="input-label" style="font-size: 9px; margin-bottom: 6px;">CREATOR INTELLIGENCE</span>
+                <div style="font-size: 32px; font-weight: 700; color: #fff;" id="ob-score-overall">92</div>
+                <div class="view-subtitle" style="color: var(--color-primary-green); font-weight: 600; font-size: 11px; margin-top: 4px;">Excellent Affinity Rank</div>
+              </div>
+              
+              <div class="col-6 luxury-card" style="display: flex; flex-direction: column; justify-content: center; align-items: center; min-height: 200px; box-sizing: border-box;">
+                <span class="input-label" style="font-size: 9px; margin-bottom: 6px;">5-AXIS RADAR CHART</span>
+                <div id="ob-radar-chart" style="width: 140px; height: 140px; display: flex; align-items: center; justify-content: center;"></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Wizard Action Navigation Bar -->
+          <div style="display: flex; justify-content: space-between; border-top: 1px solid var(--color-border); padding-top: 20px; margin-top: 20px;" id="ob-nav-bar">
+            <button class="btn btn-tertiary" id="ob-btn-prev" onclick="App.prevOnboardingStep()" style="display: none;">Back</button>
+            <button class="btn btn-primary" id="ob-btn-next" onclick="App.nextOnboardingStep()" style="margin-left: auto;">Continue →</button>
+          </div>
+        </div>
+      </section>
+      
+      <!-- ==================== SUB-VIEW: BRAND DASHBOARD & CAMPAIGNS ==================== -->
+      <section id="subview-brand-campaigns" class="subview" style="display: none;">
+        <div class="view-header">
+          <div>
+            <h1 class="view-title">Campaign Manager</h1>
+            <p class="view-subtitle" id="brand-dashboard-subtitle">Create and match influencer marketing campaigns.</p>
+          </div>
+          <button class="btn btn-primary" onclick="App.showCampaignModal()">+ Create Campaign</button>
+        </div>
+        
+        <div class="dashboard-grid">
+          <!-- Left: Campaign Cards list -->
+          <div class="col-4" id="brand-campaign-list-column">
+            <!-- Rendered dynamically -->
+          </div>
+          
+          <!-- Right: Campaign Match Workspace -->
+          <div class="col-8" id="campaign-workspace-column">
+            <div class="glass-card" style="text-align: center; padding: 60px 20px;">
+              <h2 style="margin-bottom: 12px; color: var(--color-text-gray);">No Campaign Selected</h2>
+              <p class="view-subtitle">Select a campaign from the sidebar or click "+ Create Campaign" to discover matched creators.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+      
+      <!-- ==================== SUB-VIEW: BRAND CREATOR SEARCH ==================== -->
+      <section id="subview-brand-search" class="subview" style="display: none;">
+        <div class="view-header">
+          <div>
+            <h1 class="view-title">AI Sourcing Match Engine</h1>
+            <p class="view-subtitle">Enter conversational campaign briefs to query our regional creator database.</p>
+          </div>
+        </div>
+        
+        <!-- Perplexity style Prompt Box -->
+        <div class="luxury-card prompt-box-card" style="margin-bottom: 24px; padding: 24px;">
+          <form id="ai-search-prompt-form" onsubmit="App.handleAiPromptSearch(event)">
+            <div style="position: relative; display: flex; align-items: center;">
+              <textarea id="ai-search-prompt-input" class="input-field" style="width: 100%; min-height: 80px; padding: 16px 90px 16px 16px; border-radius: 12px; font-family: var(--font-body); font-size: 14px; line-height: 1.6; resize: none;" placeholder="Brief our AI match query... (e.g. 'I need micro-influencers in Indore speaking Bundeli for Swad Spices marketing campaign with high regional affinity')"></textarea>
+              <button type="submit" class="btn btn-primary" style="position: absolute; right: 12px; bottom: 12px; padding: 8px 16px; font-size: 12px;">
+                Ask AI →
+              </button>
+            </div>
+            <div style="margin-top: 14px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px;">
+              <div style="display: flex; gap: 8px; align-items: center;">
+                <span class="input-label" style="font-size: 10px;">POPULAR TEMPLATES:</span>
+                <span class="tag tag-green" style="cursor: pointer; font-size:9px; padding:2px 6px;" onclick="App.fillPromptTemplate('Marathi food creators in Pune')">Marathi Food (Pune)</span>
+                <span class="tag tag-cyan" style="cursor: pointer; font-size:9px; padding:2px 6px;" onclick="App.fillPromptTemplate('Bundeli blogger in Indore')">Bundeli Blogger (Indore)</span>
+                <span class="tag tag-indigo" style="cursor: pointer; font-size:9px; padding:2px 6px;" onclick="App.fillPromptTemplate('Telugu fashion Hyderabad')">Telugu Fashion (Hyderabad)</span>
+              </div>
+              <span style="font-size: 10px; color: var(--color-text-muted); font-weight: 600;">CIS Matcher Engine v2.0</span>
+            </div>
+          </form>
+        </div>
+        
+        <!-- Loading Workspace Overlay -->
+        <div id="ai-search-loader" style="display: none; background: rgba(21,31,50,0.6); border: 1px solid var(--color-border); border-radius: 16px; padding: 40px; text-align: center; margin-bottom: 24px; backdrop-filter: blur(12px);">
+          <div class="ai-thinking-spinner" style="margin-bottom: 20px;">
+            <div class="double-bounce1"></div>
+            <div class="double-bounce2"></div>
+          </div>
+          <h3 style="font-size: 18px; color: #fff; margin-bottom: 12px;" id="ai-loader-title">Consulting Matching Engine...</h3>
+          <div style="max-width: 340px; margin: 0 auto; display: flex; flex-direction: column; gap: 10px; text-align: left;" id="ai-loader-steps">
+            <!-- Steps injected dynamically -->
+          </div>
+        </div>
+
+        <!-- Search Results Grid (Sourcing matching card view) -->
+        <div class="dashboard-grid" id="search-results-grid" style="gap: 20px;">
+          <!-- Empty state by default -->
+          <div class="col-12 luxury-card" style="text-align: center; padding: 60px 20px; border-style: dashed; display: flex; flex-direction: column; align-items: center; justify-content: center;">
+            <svg viewBox="0 0 24 24" width="40" height="40" stroke="var(--color-text-muted)" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round" style="margin-bottom: 16px;"><polygon points="22 12 16 12 14 15 10 15 8 12 2 12 2 17 22 17 22 12"></polygon><path d="M5.45 5.11L2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"></path></svg>
+            <h3 style="color: #fff; font-size: 16px; margin-bottom: 6px;">Your next collaboration starts here.</h3>
+            <p class="view-subtitle" style="font-size: 12px; max-width: 380px; margin: 0 auto; color: var(--color-text-gray);">Enter a campaign brief query above to search, score, and align regional creators matching your brand goals.</p>
+          </div>
+        </div>
+      </section>
+      
+      <!-- ==================== SUB-VIEW: ADMIN MONITOR ==================== -->
+      <section id="subview-admin-dashboard" class="subview" style="display: none;">
+        <div class="view-header">
+          <div>
+            <h1 class="view-title">Admin Dashboard</h1>
+            <p class="view-subtitle">Monitor registrations and simulated n8n workflow queues.</p>
+          </div>
+        </div>
+        
+        <div class="dashboard-grid">
+          <div class="col-4 glass-card stat-card">
+            <div class="stat-icon-wrapper stat-icon-green">👤</div>
+            <div>
+              <div class="stat-num" id="admin-stat-users">0</div>
+              <div class="stat-label">REGISTERED USERS</div>
+            </div>
+          </div>
+          
+          <div class="col-4 glass-card stat-card">
+            <div class="stat-icon-wrapper stat-icon-cyan">📣</div>
+            <div>
+              <div class="stat-num" id="admin-stat-campaigns">0</div>
+              <div class="stat-label">TOTAL CAMPAIGNS</div>
+            </div>
+          </div>
+          
+          <div class="col-4 glass-card stat-card">
+            <div class="stat-icon-wrapper stat-icon-indigo">🧠</div>
+            <div>
+              <div class="stat-num" id="admin-stat-enriched">0</div>
+              <div class="stat-label">AI PROCESSED CREATORS</div>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Tab Selector -->
+        <div style="display: flex; gap: 12px; margin-top: 24px; margin-bottom: 16px; border-bottom: 1px solid var(--color-border); padding-bottom: 12px;">
+          <button class="btn btn-secondary" id="btn-admin-tab-logs" onclick="App.switchAdminTab('logs')" style="padding: 6px 14px; font-size:12px; height: 32px;">n8n Logs</button>
+          <button class="btn btn-tertiary" id="btn-admin-tab-users" onclick="App.switchAdminTab('users')" style="padding: 6px 14px; font-size:12px; height: 32px;">Users List</button>
+          <button class="btn btn-tertiary" id="btn-admin-tab-camps" onclick="App.switchAdminTab('camps')" style="padding: 6px 14px; font-size:12px; height: 32px;">Campaigns List</button>
+        </div>
+
+        <!-- Tab Panel: n8n Logs -->
+        <div class="glass-card" id="admin-panel-logs">
+          <h3>Simulated n8n Webhook Console Logs</h3>
+          <p class="view-subtitle" style="margin-bottom: 20px;">Real-time queue execution details.</p>
+          <div style="background: #111827; padding: 20px; border-radius: 8px; font-family: monospace; font-size: 13px; line-height: 1.6; color: #10B981; max-height: 350px; overflow-y: auto;" id="admin-console-log">
+            [SYS] System Initialized in Demo Mode.<br>
+            [SYS] Waiting for Auth webhook triggers...
+          </div>
+        </div>
+
+        <!-- Tab Panel: Users Directory -->
+        <div class="glass-card" id="admin-panel-users" style="display: none;">
+          <h3>Platform User Registry</h3>
+          <p class="view-subtitle" style="margin-bottom: 20px;">Review and manage registered Content Creators and Brand Managers.</p>
+          <div style="overflow-x: auto;">
+            <table style="width: 100%; border-collapse: collapse; text-align: left; font-size:13px;">
+              <thead>
+                <tr style="border-bottom: 1px solid var(--color-border); color: var(--color-text-muted);">
+                  <th style="padding: 12px 8px;">USER ID</th>
+                  <th style="padding: 12px 8px;">EMAIL</th>
+                  <th style="padding: 12px 8px;">PORTAL ROLE</th>
+                  <th style="padding: 12px 8px;">JOINED DATE</th>
+                </tr>
+              </thead>
+              <tbody id="admin-users-list-body">
+                <!-- Injected dynamically -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Tab Panel: Campaigns List -->
+        <div class="glass-card" id="admin-panel-camps" style="display: none;">
+          <h3>Platform Brand Campaigns</h3>
+          <p class="view-subtitle" style="margin-bottom: 20px;">Track all marketing campaigns and match counts.</p>
+          <div style="overflow-x: auto;">
+            <table style="width: 100%; border-collapse: collapse; text-align: left; font-size:13px;">
+              <thead>
+                <tr style="border-bottom: 1px solid var(--color-border); color: var(--color-text-muted);">
+                  <th style="padding: 12px 8px;">CAMPAIGN ID</th>
+                  <th style="padding: 12px 8px;">TITLE</th>
+                  <th style="padding: 12px 8px;">TARGET BUDGET</th>
+                  <th style="padding: 12px 8px;">TARGET REGION</th>
+                  <th style="padding: 12px 8px;">CAMPAIGN STATUS</th>
+                </tr>
+              </thead>
+              <tbody id="admin-camps-list-body">
+                <!-- Injected dynamically -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+      
+      <!-- ==================== SUB-VIEW: GLOBAL CONNECTION SETTINGS ==================== -->
+      <section id="subview-settings" class="subview" style="display: none;">
+        <div class="view-header">
+          <div>
+            <h1 class="view-title">Integration & Settings</h1>
+            <p class="view-subtitle">Connect real Supabase and n8n pipelines.</p>
+          </div>
+        </div>
+        
+        <div class="glass-card" style="max-width: 700px;">
+          <div class="settings-section">
+            <h3 class="settings-section-title">INTEGRATION MODE</h3>
+            <div class="input-group">
+              <label class="input-label" for="setting-mode-select">CHOOSE ACTIVE ENGINE</label>
+              <select id="setting-mode-select" class="input-field" onchange="App.handleModeChange()">
+                <option value="demo">Interactive Demo Mode (Local state storage)</option>
+                <option value="live">Live Integration Mode (Supabase Auth/DB + n8n Webhooks)</option>
+              </select>
+            </div>
+          </div>
+          
+          <div id="live-settings-inputs" style="display: none;">
+            <div class="settings-section">
+              <h3 class="settings-section-title">SUPABASE BACKEND CREDENTIALS</h3>
+              <div class="input-group">
+                <label class="input-label">SUPABASE URL</label>
+                <input type="text" id="set-sb-url" class="input-field" placeholder="https://xyz.supabase.co">
+              </div>
+              <div class="input-group">
+                <label class="input-label">PUBLIC ANON KEY</label>
+                <input type="password" id="set-sb-key" class="input-field" placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...">
+              </div>
+            </div>
+            
+            <div class="settings-section">
+              <h3 class="settings-section-title">n8n AI WORKFLOW WEBHOOKS</h3>
+              <div class="input-group">
+                <label class="input-label">CREATOR PROFILE WEBHOOK (WF-01)</label>
+                <input type="text" id="set-n8n-profile" class="input-field" placeholder="https://n8n.domain.com/webhook/creator-profile-analysis">
+              </div>
+              <div class="input-group">
+                <label class="input-label">CAMPAIGN ANALYZER WEBHOOK (WF-04)</label>
+                <input type="text" id="set-n8n-campaign" class="input-field" placeholder="https://n8n.domain.com/webhook/campaign-analysis">
+              </div>
+            </div>
+          </div>
+          
+          <button class="btn btn-primary" onclick="App.saveIntegrationSettings()">
+            Save Configuration Settings
+          </button>
+        </div>
+      </section>
+
+      <!-- ==================== SUB-VIEW: CREATOR CAMPAIGN DISCOVERY ==================== -->
+      <section id="subview-creator-campaign-discovery" class="subview" style="display: none;">
+        <div class="view-header">
+          <div>
+            <h1 class="view-title">Campaign Discovery</h1>
+            <p class="view-subtitle">Browse sponsorships and matching campaigns from premium brands.</p>
+          </div>
+        </div>
+        
+        <!-- Filter Bar -->
+        <div class="luxury-card" style="margin-bottom: 24px; padding: 16px; display: flex; gap: 16px; align-items: center; flex-wrap: wrap; box-sizing: border-box;">
+          <span class="input-label" style="margin-bottom:0;">FILTERS:</span>
+          <select id="disc-filter-category" class="input-field" style="width: 160px; padding: 6px 12px; margin-bottom: 0;" onchange="App.loadCampaignDiscoveryList()">
+            <option value="all">All Niches</option>
+            <option value="food">Food</option>
+            <option value="travel">Travel</option>
+            <option value="fashion">Fashion</option>
+            <option value="lifestyle">Lifestyle</option>
+          </select>
+          <select id="disc-filter-budget" class="input-field" style="width: 180px; padding: 6px 12px; margin-bottom: 0;" onchange="App.loadCampaignDiscoveryList()">
+            <option value="all">Any Budget</option>
+            <option value="50000">₹50,000+ matches</option>
+            <option value="80000">₹80,000+ matches</option>
+          </select>
+        </div>
+
+        <div class="dashboard-grid" id="discovery-campaigns-grid" style="gap: 20px;">
+          <!-- Injected dynamically -->
+        </div>
+      </section>
+
+      <!-- ==================== SUB-VIEW: CREATOR PROFILE MANAGEMENT & RE-ANALYSIS ==================== -->
+      <section id="subview-creator-profile-mgmt" class="subview" style="display: none;">
+        <div class="view-header">
+          <div>
+            <h1 class="view-title">Profile Management</h1>
+            <p class="view-subtitle">Update social handles and trigger AI intelligence score re-analysis.</p>
+          </div>
+          <button class="btn btn-primary" onclick="App.triggerCreatorReanalysis()">Re-analyze Profile →</button>
+        </div>
+        
+        <div class="dashboard-grid" style="gap: 24px;">
+          <!-- Left: Edit Form -->
+          <div class="col-8 luxury-card" style="padding: 28px; box-sizing: border-box;">
+            <h3 style="margin-top:0; margin-bottom: 20px; color:#fff;">Channel Details</h3>
+            <form onsubmit="App.saveProfileMgmtDetails(event)">
+              <div class="dashboard-grid" style="gap: 16px;">
+                <div class="col-6 input-group">
+                  <label class="input-label">DISPLAY NAME</label>
+                  <input type="text" id="pmg-name" class="input-field" placeholder="Anjali Verma" required>
+                </div>
+                <div class="col-6 input-group">
+                  <label class="input-label">AVATAR IMAGE URL</label>
+                  <input type="url" id="pmg-avatar" class="input-field" placeholder="https://images.unsplash.com/...">
+                </div>
+                <div class="col-12 input-group">
+                  <label class="input-label">CHANNEL DESCRIPTION (BIO)</label>
+                  <textarea id="pmg-bio" class="input-field" rows="3" placeholder="Describe your vernacular content..." required></textarea>
+                </div>
+                
+                <div class="col-6 input-group">
+                  <label class="input-label">INSTAGRAM HANDLE</label>
+                  <input type="text" id="pmg-ig" class="input-field" placeholder="@username">
+                </div>
+                <div class="col-6 input-group">
+                  <label class="input-label">YOUTUBE CHANNEL LINK</label>
+                  <input type="text" id="pmg-yt" class="input-field" placeholder="youtube.com/c/channel">
+                </div>
+              </div>
+              <button type="submit" class="btn btn-primary" style="margin-top: 10px;">Save Profile Details</button>
+            </form>
+          </div>
+          
+          <!-- Right: Summary overview -->
+          <div class="col-4 luxury-card" style="padding: 28px; display:flex; flex-direction:column; justify-content:space-between; align-items:center; text-align:center; box-sizing: border-box;">
+            <div>
+              <h3 style="margin-top:0; margin-bottom: 8px; color:#fff;">Status Rating</h3>
+              <span class="tag tag-green pulse-badge-green" style="font-size: 11px; padding: 4px 10px; display:inline-block; font-weight:700; margin-bottom: 24px;">AI Enriched Profile</span>
+            </div>
+            
+            <div style="background: rgba(0,0,0,0.3); padding: 24px; border-radius: 50%; width: 120px; height: 120px; display:flex; flex-direction:column; align-items:center; justify-content:center; border: 2px solid var(--color-primary-cyan); box-sizing: border-box;">
+              <span class="input-label" style="font-size: 8px; margin-bottom:2px;">AI CIS SCORE</span>
+              <div style="font-size: 28px; font-weight:700; color:#fff;" id="pmg-score-value">--</div>
+            </div>
+            
+            <p class="view-subtitle" style="font-size: 11px; max-width: 200px; margin-top:20px; line-height:1.5; color: var(--color-text-gray);">Trigger re-analysis after updating your bio or reach figures to sync new n8n evaluation variables.</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- ==================== SUB-VIEW: NOTIFICATIONS INBOX ==================== -->
+      <section id="subview-notifications" class="subview" style="display: none;">
+        <div class="view-header">
+          <div>
+            <h1 class="view-title">Inbox Alerts</h1>
+            <p class="view-subtitle">Monitor incoming payment notifications, brand approvals, and system state updates.</p>
+          </div>
+          <button class="btn btn-tertiary" onclick="App.clearAllNotifications()">Mark all as read</button>
+        </div>
+        
+        <div style="display: flex; flex-direction: column; gap: 16px;" id="notifications-inbox-list">
+          <!-- Injected dynamically -->
+        </div>
+      </section>
+
+      <!-- ==================== SUB-VIEW: CREATOR EARNINGS & TRANSACTIONS ==================== -->
+      <section id="subview-creator-earnings" class="subview" style="display: none;">
+        <div class="view-header">
+          <div>
+            <h1 class="view-title">Earnings & Statistics</h1>
+            <p class="view-subtitle">Monitor payouts, track clearings, and view financial performance graphs.</p>
+          </div>
+        </div>
+        
+        <!-- KPI Row -->
+        <div class="dashboard-grid" style="margin-bottom: 24px; gap: 16px;">
+          <div class="col-4 glass-card stat-card" style="display:flex; align-items:center; gap:16px; box-sizing:border-box;">
+            <div class="stat-icon-wrapper stat-icon-green" style="font-size:24px; background:rgba(0, 242, 166, 0.1); padding:12px; border-radius:10px;">₹</div>
+            <div>
+              <div class="stat-num" id="earn-stat-total" style="font-size:20px; font-weight:700; color:#fff;">₹45,000</div>
+              <div class="stat-label" style="font-size:10px; color:var(--color-text-gray); margin-top:2px;">TOTAL EARNED</div>
+            </div>
+          </div>
+          
+          <div class="col-4 glass-card stat-card" style="display:flex; align-items:center; gap:16px; box-sizing:border-box;">
+            <div class="stat-icon-wrapper stat-icon-cyan" style="font-size:24px; background:rgba(0, 212, 255, 0.1); padding:12px; border-radius:10px;">⏳</div>
+            <div>
+              <div class="stat-num" id="earn-stat-pending" style="font-size:20px; font-weight:700; color:#fff;">₹15,000</div>
+              <div class="stat-label" style="font-size:10px; color:var(--color-text-gray); margin-top:2px;">PENDING CLEARANCE</div>
+            </div>
+          </div>
+          
+          <div class="col-4 glass-card stat-card" style="display:flex; align-items:center; gap:16px; box-sizing:border-box;">
+            <div class="stat-icon-wrapper stat-icon-indigo" style="font-size:24px; background:rgba(79, 70, 229, 0.1); padding:12px; border-radius:10px;">📈</div>
+            <div>
+              <div class="stat-num" id="earn-stat-active" style="font-size:20px; font-weight:700; color:#fff;">2</div>
+              <div class="stat-label" style="font-size:10px; color:var(--color-text-gray); margin-top:2px;">ACTIVE COLLABS</div>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Transactions Table -->
+        <div class="glass-card">
+          <h3 style="margin-top:0; margin-bottom: 16px; color:#fff; font-size:16px;">Payout History</h3>
+          <div style="overflow-x: auto;">
+            <table style="width: 100%; border-collapse: collapse; text-align: left; font-size:13px;" id="creator-transactions-table">
+              <thead>
+                <tr style="border-bottom: 1px solid var(--color-border); color: var(--color-text-muted);">
+                  <th style="padding: 12px 8px;">TRANSACTION ID</th>
+                  <th style="padding: 12px 8px;">CAMPAIGN TITLE</th>
+                  <th style="padding: 12px 8px;">BRAND SPONSOR</th>
+                  <th style="padding: 12px 8px;">AMOUNT</th>
+                  <th style="padding: 12px 8px;">STATUS</th>
+                  <th style="padding: 12px 8px;">DATE</th>
+                </tr>
+              </thead>
+              <tbody id="creator-earnings-list-body">
+                <!-- Injected dynamically -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- ==================== SUB-VIEW: CREATOR SETTINGS ==================== -->
+      <section id="subview-creator-settings" class="subview" style="display: none;">
+        <div class="view-header">
+          <div>
+            <h1 class="view-title">Account Preferences</h1>
+            <p class="view-subtitle">Manage login preferences, connected social accounts, and notifications.</p>
+          </div>
+        </div>
+        
+        <div class="glass-card" style="max-width: 650px;">
+          <div class="settings-section" style="margin-bottom: 24px; padding-bottom: 16px; border-bottom: 1px solid var(--color-border);">
+            <h3 style="color:#fff; margin-top:0; margin-bottom:12px; font-size: 15px;">CONNECTED SOCIAL PLATFORMS</h3>
+            <div style="display:flex; flex-direction:column; gap:12px;">
+              <div style="display:flex; justify-content:space-between; align-items:center;">
+                <div>
+                  <h4 style="margin:0; font-size:13px; color:#fff;">Instagram Professional Insight</h4>
+                  <p style="margin:0; font-size:11px; color:var(--color-text-gray);">Allows reach metadata fetching</p>
+                </div>
+                <span class="tag tag-green">Connected</span>
+              </div>
+              <div style="display:flex; justify-content:space-between; align-items:center; border-top:1px solid rgba(255,255,255,0.03); padding-top:10px;">
+                <div>
+                  <h4 style="margin:0; font-size:13px; color:#fff;">YouTube Creator Console</h4>
+                  <p style="margin:0; font-size:11px; color:var(--color-text-gray);">Allows video analytics tracking</p>
+                </div>
+                <button class="btn btn-secondary" style="padding: 4px 10px; font-size: 11px;">Connect Channel</button>
+              </div>
+            </div>
+          </div>
+          
+          <div class="settings-section" style="margin-bottom: 24px; padding-bottom: 16px; border-bottom: 1px solid var(--color-border);">
+            <h3 style="color:#fff; margin-top:0; margin-bottom:12px; font-size: 15px;">NOTIFICATION CHANNELS</h3>
+            <div style="display:flex; flex-direction:column; gap:10px; font-size: 13px;">
+              <label style="display:flex; align-items:center; gap:8px;">
+                <input type="checkbox" checked> Receive Whatsapp campaign invites
+              </label>
+              <label style="display:flex; align-items:center; gap:8px;">
+                <input type="checkbox" checked> Email notifications for cleared payouts
+              </label>
+            </div>
+          </div>
+
+          <div class="settings-section">
+            <h3 style="color:#fff; margin-top:0; margin-bottom:12px; font-size: 15px;">SECURITY ACTION</h3>
+            <button class="btn btn-tertiary" onclick="App.handleLogout()" style="font-size:12px; padding:8px 16px;">Logout Session</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- ==================== SUB-VIEW: BRAND SETTINGS ==================== -->
+      <section id="subview-brand-settings" class="subview" style="display: none;">
+        <div class="view-header">
+          <div>
+            <h1 class="view-title">Settings & Subscriptions</h1>
+            <p class="view-subtitle">Manage brand billing, edit company details, and configure invites.</p>
+          </div>
+        </div>
+        
+        <div class="dashboard-grid" style="gap: 20px;">
+          <!-- Left: billing -->
+          <div class="col-6 luxury-card" style="box-sizing:border-box; padding: 24px;">
+            <h3 style="margin-top:0; color:#fff; margin-bottom:12px; font-size: 16px;">Billing Tier</h3>
+            <p style="font-size:12px; color:var(--color-text-gray); margin-bottom: 20px;">Currently deploying our Standalone SaaS model.</p>
+            
+            <div style="background:rgba(255,255,255,0.03); border: 1px solid var(--color-border); border-radius:8px; padding:16px; margin-bottom:20px;">
+              <div style="font-weight:700; font-size:14px; color:#fff;">Standard Matching Plan</div>
+              <div style="font-size:18px; color:var(--color-primary-cyan); font-weight:700; margin-top:4px;">₹14,999 / mo</div>
+            </div>
+            
+            <button class="btn btn-primary" style="width:100%; font-size:12px;">Upgrade to Enterprise OS →</button>
+          </div>
+          
+          <!-- Right: Team list -->
+          <div class="col-6 luxury-card" style="box-sizing:border-box; padding: 24px;">
+            <h3 style="margin-top:0; color:#fff; margin-bottom:16px; font-size: 16px;">Marketing Team Roles</h3>
+            
+            <div style="display:flex; flex-direction:column; gap:12px;">
+              <div style="display:flex; justify-content:space-between; align-items:center; font-size:13px;">
+                <div>
+                  <div style="font-weight:600; color:#fff;">Siddharth Roy</div>
+                  <div style="font-size:11px; color:var(--color-text-gray);">siddharth@swadspices.com</div>
+                </div>
+                <span class="tag tag-indigo" style="font-size: 9px; padding:2px 6px;">Campaign Lead</span>
+              </div>
+              <div style="display:flex; justify-content:space-between; align-items:center; border-top:1px solid rgba(255,255,255,0.03); padding-top:10px; font-size:13px;">
+                <div>
+                  <div style="font-weight:600; color:#fff;">Pooja Mehta</div>
+                  <div style="font-size:11px; color:var(--color-text-gray);">pooja@swadspices.com</div>
+                </div>
+                <span class="tag tag-cyan" style="font-size: 9px; padding:2px 6px;">Administrator</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+  
+  <!-- ==================== MODAL: CAMPAIGN CREATION FORM ==================== -->
+  <div class="modal-overlay" id="modal-campaign-form">
+    <div class="modal-content glass-card">
+      <h2 style="margin-bottom: 20px;">Create Campaign Brief</h2>
+      <form id="campaign-create-form" onsubmit="App.handleCampaignSubmit(event)">
+        <div class="input-group">
+          <label class="input-label">CAMPAIGN TITLE</label>
+          <input type="text" id="camp-title" class="input-field" placeholder="Masala Chai Pune Launch" required>
+        </div>
+        <div class="input-group">
+          <label class="input-label">CAMPAIGN OBJECTIVE (Free-text instructions for AI)</label>
+          <textarea id="camp-objective" class="input-field" rows="4" placeholder="Describe what you want to achieve. E.g., Sourcing Marathi culinary creators in Pune for tea rollout. Budget: ₹50K..." required></textarea>
+        </div>
+        
+        <div class="dashboard-grid" style="gap: 12px; margin-bottom: 12px;">
+          <div class="col-6 input-group" style="margin-bottom: 0;">
+            <label class="input-label">CATEGORY</label>
+            <select id="camp-category" class="input-field">
+              <option value="food">Food</option>
+              <option value="tech">Tech</option>
+              <option value="lifestyle">Lifestyle</option>
+              <option value="fashion">Fashion</option>
+              <option value="beauty">Beauty</option>
+            </select>
+          </div>
+          <div class="col-6 input-group" style="margin-bottom: 0;">
+            <label class="input-label">TARGET REGION / CITY</label>
+            <input type="text" id="camp-region" class="input-field" placeholder="Pune" required>
+          </div>
+          
+          <div class="col-6 input-group" style="margin-bottom: 0;">
+            <label class="input-label">REQUIRED LANGUAGE</label>
+            <input type="text" id="camp-language" class="input-field" placeholder="Marathi" required>
+          </div>
+          <div class="col-6 input-group" style="margin-bottom: 0;">
+            <label class="input-label">CREATOR SIZE</label>
+            <select id="camp-type" class="input-field">
+              <option value="micro">Micro (10K - 100K)</option>
+              <option value="mid">Mid-Tier (100K+)</option>
+            </select>
+          </div>
+          
+          <div class="col-6 input-group" style="margin-bottom: 0;">
+            <label class="input-label">BUDGET ALLOCATION (₹)</label>
+            <input type="number" id="camp-budget" class="input-field" placeholder="50000" required>
+          </div>
+          <div class="col-6 input-group" style="margin-bottom: 0;">
+            <label class="input-label">AUDIENCE DEMOGRAPHICS</label>
+            <input type="text" id="camp-audience" class="input-field" placeholder="Age 18-35, food lovers" required>
+          </div>
+        </div>
+        
+        <div class="auth-btn-row">
+          <button type="submit" class="btn btn-primary" style="flex: 1;">Create & Analyze Campaign</button>
+          <button type="button" class="btn btn-tertiary" onclick="App.closeCampaignModal()">Cancel</button>
+        </div>
+      </form>
+    </div>
+  </div>
+  
+  <!-- ==================== MODAL: n8n PIPELINE PROCESSING OVERLAY ==================== -->
+  <div class="modal-overlay" id="modal-pipeline-progress">
+    <div class="modal-content glass-card" style="max-width: 450px;">
+      <h3 id="pipeline-title" style="text-align: center; margin-bottom: 16px;">Triggering AI Workflow...</h3>
+      <div class="queue-monitor-panel">
+        <div class="queue-step" id="qstep-1">
+          <div class="step-indicator"></div>
+          <div class="step-name">Step 1 Details</div>
+          <div class="step-status">Pending</div>
+        </div>
+        <div class="queue-step" id="qstep-2">
+          <div class="step-indicator"></div>
+          <div class="step-name">Step 2 Details</div>
+          <div class="step-status">Pending</div>
+        </div>
+        <div class="queue-step" id="qstep-3">
+          <div class="step-indicator"></div>
+          <div class="step-name">Step 3 Details</div>
+          <div class="step-status">Pending</div>
+        </div>
+      </div>
+      <div style="text-align: center; margin-top: 24px;" id="pipeline-loader-row">
+        <div class="spinner" style="margin: 0 auto;"></div>
+        <p class="view-subtitle" style="margin-top: 8px;">Please wait, n8n calculations executing...</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- JS Core files -->
+  <script src="js/mock-data.js"></script>
+  <script src="js/supabase-client.js"></script>
+  <script src="js/n8n-client.js"></script>
+  <script src="js/ui-components.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
