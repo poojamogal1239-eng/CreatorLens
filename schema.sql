@@ -6,7 +6,6 @@ CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 -- Drop existing tables if they exist to allow clean recreations
 DROP TABLE IF EXISTS public.notifications CASCADE;
 DROP TABLE IF EXISTS public.collaborations CASCADE;
-DROP TABLE IF EXISTS public.pricing_recommendations CASCADE;
 DROP TABLE IF EXISTS public.campaign_matches CASCADE;
 DROP TABLE IF EXISTS public.campaigns CASCADE;
 DROP TABLE IF EXISTS public.creator_ai_suggestions CASCADE;
@@ -193,18 +192,6 @@ CREATE TABLE public.ai_jobs (
     completed_at TIMESTAMP WITH TIME ZONE
 );
 
--- 13. Pricing Recommendations Table
-CREATE TABLE public.pricing_recommendations (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    campaign_id UUID REFERENCES public.campaigns(id) ON DELETE CASCADE,
-    creator_id UUID REFERENCES public.creators(id) ON DELETE CASCADE,
-    min_price INTEGER NOT NULL,
-    recommended_price INTEGER NOT NULL,
-    premium_price INTEGER NOT NULL,
-    pricing_justification TEXT,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
-);
-
 -- Performance Indexes
 CREATE INDEX idx_creators_categories ON public.creators USING gin (categories);
 CREATE INDEX idx_creators_regions ON public.creators USING gin (regions);
@@ -213,7 +200,6 @@ CREATE INDEX idx_campaigns_brand ON public.campaigns (brand_id);
 CREATE INDEX idx_campaign_matches_camp ON public.campaign_matches (campaign_id);
 CREATE INDEX idx_collaborations_creator ON public.collaborations (creator_id);
 CREATE INDEX idx_notifications_user ON public.notifications (user_id, read);
-CREATE INDEX idx_pricing_rec_campaign ON public.pricing_recommendations (campaign_id);
 
 -- Enable Row Level Security (RLS) on tables
 ALTER TABLE public.users ENABLE ROW LEVEL SECURITY;
@@ -228,7 +214,6 @@ ALTER TABLE public.notifications ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.creator_ai_analysis ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.workflow_logs ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.ai_jobs ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.pricing_recommendations ENABLE ROW LEVEL SECURITY;
 
 -- Setup RLS Policies (Allow server role bypass, and simple select access for users)
 CREATE POLICY "Allow all public reads for demo" ON public.users FOR SELECT USING (true);
@@ -243,6 +228,5 @@ CREATE POLICY "Allow all public reads for notifications" ON public.notifications
 CREATE POLICY "Allow all public reads for creator_ai_analysis" ON public.creator_ai_analysis FOR SELECT USING (true);
 CREATE POLICY "Allow all public reads for workflow_logs" ON public.workflow_logs FOR SELECT USING (true);
 CREATE POLICY "Allow all public reads for ai_jobs" ON public.ai_jobs FOR SELECT USING (true);
-CREATE POLICY "Allow all public reads for pricing_recs" ON public.pricing_recommendations FOR SELECT USING (true);
 
 -- Allow all writes since the backend server uses service-role API credentials with bypass RLS enabled.
