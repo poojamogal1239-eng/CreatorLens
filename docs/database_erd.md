@@ -1,8 +1,10 @@
-# CreatorLens Database ERD
+# CreatorLens Database ERD & Schema v1.0 Specifications
 
-This document contains the Entity Relationship Diagram (ERD) and description of the relational database schema deployed in Supabase.
+This document contains the Entity Relationship Diagram (ERD), a brief data dictionary, and mapping specs for the **CreatorLens Schema v1.0**.
 
-## Entity Relationship Diagram
+---
+
+## 1. Entity Relationship Diagram (12 Tables)
 
 ```mermaid
 erDiagram
@@ -11,6 +13,7 @@ erDiagram
         text email UK
         varchar role
         timestamptz created_at
+        timestamptz updated_at
     }
 
     creators {
@@ -28,15 +31,19 @@ erDiagram
         integer pricing_min
         integer pricing_premium
         varchar ai_status
+        timestamptz created_at
+        timestamptz updated_at
     }
 
     brands {
         uuid id PK, FK
-        varchar brand_code UK
+        brand_code UK
         text company_name
         text website
         text industry
         text bio
+        timestamptz created_at
+        timestamptz updated_at
     }
 
     creator_ai_analysis {
@@ -63,6 +70,7 @@ erDiagram
         integer content_consistency
         integer brand_readiness
         text ai_explanation
+        timestamptz created_at
         timestamptz updated_at
     }
 
@@ -73,11 +81,13 @@ erDiagram
         varchar impact_level
         integer expected_improvement
         timestamptz created_at
+        timestamptz updated_at
     }
 
     campaigns {
         uuid id PK
         uuid brand_id FK
+        uuid created_by FK
         text title
         text objective
         varchar category
@@ -91,6 +101,7 @@ erDiagram
         text ai_tier
         varchar ai_status
         timestamptz created_at
+        timestamptz updated_at
     }
 
     campaign_matches {
@@ -105,6 +116,7 @@ erDiagram
         text match_explanation
         varchar status
         timestamptz created_at
+        timestamptz updated_at
     }
 
     collaborations {
@@ -116,6 +128,7 @@ erDiagram
         text price_justification
         varchar status
         timestamptz created_at
+        timestamptz updated_at
     }
 
     notifications {
@@ -126,6 +139,7 @@ erDiagram
         varchar type
         boolean read
         timestamptz created_at
+        timestamptz updated_at
     }
 
     ai_jobs {
@@ -142,6 +156,7 @@ erDiagram
         timestamptz queued_at
         timestamptz started_at
         timestamptz completed_at
+        timestamptz updated_at
     }
 
     workflow_logs {
@@ -153,8 +168,7 @@ erDiagram
         varchar status
         timestamptz started_at
         timestamptz completed_at
-        integer execution_time
-        text error_message
+        error_message TEXT
         uuid execution_id
         varchar workflow_version
         varchar prompt_version
@@ -162,6 +176,8 @@ erDiagram
         integer execution_time_ms
         jsonb input_payload
         jsonb output_payload
+        timestamptz created_at
+        timestamptz updated_at
     }
 
     users ||--o| creators : "has profile (1:0..1)"
@@ -185,17 +201,51 @@ erDiagram
     campaigns ||--o{ ai_jobs : "scheduled under (1:N)"
 ```
 
-## Key Relationships Breakdown
+---
 
-1. **User Identity Profile mapping:**
-   - A single row in `users` maps 1-to-1 with either `creators` or `brands` based on the user's portal role. Their foreign key `id` references `users(id)`.
-2. **Creator AI Intelligence separation:**
-   - `creators` connects 1-to-1 with `creator_ai_analysis` (storing AI-parsed profiles) and `creator_scores` (calculated intelligence indicators) using `creator_id`.
-   - `creator_ai_suggestions` holds 1-to-N growth recommendations for each creator.
-3. **Orchestration Layer (`ai_jobs`):**
-   - Schedules and tracks asynchronous executing runs of workflows like `'Creator Analysis'` or `'Match Engine'`. Bridges state tracking to help scale processing and retry items.
-4. **Workflow Logging Telemetry:**
-   - Tracks audit configurations (`prompt_version`, `workflow_version`, `ai_model`), processing timings (`execution_time_ms`), and sanitised input/output payloads mapping back to logs.
-5. **Brand Campaigns & Sourcing:**
-   - A brand (`users` profile) creates multiple campaigns (`campaigns`).
-   - Sourcing calculations output matches into `campaign_matches` mapping `campaign_id` ➔ `creator_id` with recommendations and custom valuation pricing tiers.
+## 2. Brief Data Dictionary
+
+### 1. `users`
+* **Purpose:** Core table representing all user accounts. Maps identity credentials to roles (Creator, Brand, Admin) dynamically.
+
+### 2. `creators`
+* **Purpose:** Stores core profile variables entered manually by Content Creators (categories, languages, views count, followers count).
+
+### 3. `brands`
+* **Purpose:** Stores core properties for brand manager organizations (company name, industry, website).
+
+### 4. `creator_scores`
+* **Purpose:** Stores calculated numerical score components representing overall Audience Trust, Consistency, and Brand Readiness.
+
+### 5. `creator_ai_suggestions`
+* **Purpose:** Contains AI-generated actionable recommendations for creators (e.g. expected metrics enhancements).
+
+### 6. `campaigns`
+* **Purpose:** Holds sponsorship details and brief parameters entered by Brand Managers, alongside target keywords and tier parameters classified by n8n.
+
+### 7. `campaign_matches`
+* **Purpose:** Tracks matchmaker compatibility scores between campaign briefs and creator profiles, listing price recommendation boundaries and justifications.
+
+### 8. `collaborations`
+* **Purpose:** Represents active sponsorships, accepted agreements, negotiated rates, and fulfillment tracking statuses.
+
+### 9. `notifications`
+* **Purpose:** Real-time information, success, and payment notifications dispatched to users.
+
+### 10. `creator_ai_analysis`
+* **Purpose:** Stores detailed AI-parsed descriptions, profile summaries, strengths checks, and missing details checklist.
+
+### 11. `workflow_logs`
+* **Purpose:** Telemetry storage for auditing n8n execution timing metrics, model types, payloads, and error records.
+
+### 12. `ai_jobs`
+* **Purpose:** Orchestration layer handling queuing, prioritizing, retrying, and state monitoring for asynchronous AI processing jobs.
+
+---
+
+## 3. Table Relationship Specs
+
+* **creators / brands ➔ users (1:1):** Sub-profiles join back using `id` referencing `users(id)` with cascading deletes.
+* **creator_scores / creator_ai_analysis ➔ creators (1:1):** Relational AI outputs tied directly to creator records.
+* **campaigns ➔ brands (N:1):** Campaigns reference campaigns' brand manager `brand_id`. Contains a `created_by` field to identify the specific team member creating the campaign brief.
+* **campaign_matches ➔ campaigns & creators (N:M):** Many-to-Many resolver table mapping campaign-to-creator matches.
