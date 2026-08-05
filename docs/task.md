@@ -1,0 +1,21 @@
+# Implementation Tasks
+
+- [x] Update database schema (`schema.sql`)
+  - [x] Remove AI columns from `creators` table
+  - [x] Add `ai_status` to `creators` and `campaigns` tables
+  - [x] Create `creator_ai_analysis` table
+  - [x] Create `workflow_logs` table
+  - [x] Enable RLS and setup SELECT policies for the new tables
+- [x] Refactor backend API routes (`server/routes/creators.js`, `server/routes/campaigns.js`)
+  - [x] Update `GET /api/creators/profile/:id` and `/api/creators/dashboard/:id` to join and merge `creator_ai_analysis`
+  - [x] Update `POST /api/creators/enrich` to set status to `Processing`, insert a workflow log, and fire the optimized webhook payload
+  - [x] Update `POST /api/campaigns/:id/match` to set status to `Processing`, insert a workflow log, and fire the optimized webhook payload
+- [x] Refactor frontend adapters (`js/supabase-client.js`, `js/n8n-client.js`)
+  - [x] Initialize new localStorage keys for `cl_creator_ai_analysis` and `cl_workflow_logs`
+  - [x] Update local `getProfile` to query/merge `cl_creator_ai_analysis`
+  - [x] Update `N8N.triggerProfileEnrichment` and `N8N.triggerCampaignMatching` in `n8n-client.js` to poll status in Live mode and update progress modal
+  - [x] Update simulated workflows in `n8n-client.js` to use separate storage tables and logs
+- [x] Update frontend application logic (`js/app.js`)
+  - [x] Check `ai_status === 'Completed'` instead of `is_enriched`
+- [x] Export ready-to-import n8n workflow JSONs (`n8n/creator_profile_enrichment.json`, `n8n/campaign_matching.json`)
+- [x] Verify execution in both Demo and Live mode simulation
