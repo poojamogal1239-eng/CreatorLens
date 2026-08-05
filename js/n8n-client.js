@@ -24,9 +24,43 @@ window.N8N = {
           throw new Error(errData.message || response.statusText);
         }
         
-        const data = await response.json();
-        if (onStepUpdate) onStepUpdate("success", "Live Profile Enrichment Complete!");
-        return data;
+        // Start polling for status updates
+        const startTime = Date.now();
+        const timeout = 60000; // 60 seconds
+        let currentStep = "wf01";
+        
+        if (onStepUpdate) onStepUpdate("wf01", "Running WF-01: Profile Enrichment...");
+        
+        while (Date.now() - startTime < timeout) {
+          await new Promise(r => setTimeout(r, 2000));
+          
+          const profileResponse = await fetch(`${this.backendUrl}/creators/profile/${creatorId}`);
+          if (!profileResponse.ok) {
+            throw new Error("Failed to fetch creator profile during status check.");
+          }
+          const profile = await profileResponse.json();
+          
+          if (profile.ai_status === "Completed") {
+            if (onStepUpdate) onStepUpdate("complete", "Live Profile Enrichment Complete!");
+            return profile;
+          } else if (profile.ai_status === "Failed") {
+            throw new Error("n8n enrichment workflow failed during execution.");
+          }
+          
+          // Update visual progression based on time elapsed to make dashboard progress interactive
+          const elapsed = Date.now() - startTime;
+          if (elapsed > 10000 && currentStep === "wf02") {
+            currentStep = "wf03";
+            if (onStepUpdate) onStepUpdate("wf03", "Running WF-03: AI suggestion Builder...");
+          } else if (elapsed > 4000 && currentStep === "wf01") {
+            currentStep = "wf02";
+            if (onStepUpdate) onStepUpdate("wf02", "Running WF-02: Score Engine...");
+          } else {
+            if (onStepUpdate) onStepUpdate(currentStep, `Running ${currentStep.toUpperCase()}... (${Math.round(elapsed/1000)}s)`);
+          }
+        }
+        
+        throw new Error("Enrichment workflow timed out after 60 seconds.");
       } catch (err) {
         console.error("n8n profile enrichment webhook error:", err);
         if (onStepUpdate) onStepUpdate("error", "Enrichment error: " + err.message);
@@ -35,6 +69,8 @@ window.N8N = {
     } else {
       // Local Simulation Mode with dynamic calculation
       const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+      const traceId = "sim-" + Math.random().toString(36).substr(2, 9);
+      const startTime = Date.now();
       
       // Fetch creator data from DB
       const creators = JSON.parse(localStorage.getItem("cl_creators") || "[]");
@@ -42,22 +78,67 @@ window.N8N = {
       if (creatorIdx === -1) throw new Error("Creator not found");
       const creator = creators[creatorIdx];
       
+      // Update creator status to Processing
+      creators[creatorIdx].ai_status = "Processing";
+      localStorage.setItem("cl_creators", JSON.stringify(creators));
+
+      // Create simulated AI Job
+      const jobs = JSON.parse(localStorage.getItem("cl_ai_jobs") || "[]");
+      const jobId = "job-" + Math.random().toString(36).substr(2, 9);
+      const jobEntry = {
+        id: jobId,
+        job_type: "Creator Analysis",
+        workflow_name: "creator_profile_enrichment",
+        workflow_version: "v1.0",
+        creator_id: creatorId,
+        status: "Processing",
+        trace_id: traceId,
+        queued_at: new Date().toISOString(),
+        started_at: new Date().toISOString()
+      };
+      jobs.push(jobEntry);
+      localStorage.setItem("cl_ai_jobs", JSON.stringify(jobs));
+
+      // Log in simulated workflow_logs
+      const logs = JSON.parse(localStorage.getItem("cl_workflow_logs") || "[]");
+      const logEntry = {
+        id: "log-" + Math.random().toString(36).substr(2, 9),
+        workflow_name: "creator_profile_enrichment",
+        trace_id: traceId,
+        creator_id: creatorId,
+        status: "Processing",
+        started_at: new Date().toISOString(),
+        execution_id: jobId,
+        workflow_version: "v1.0",
+        prompt_version: "v1.0",
+        ai_model: "Gemini-1.5-pro (Simulated)",
+        execution_time_ms: 0,
+        input_payload: { creator_id: creatorId, trace_id: traceId, job_id: jobId }
+      };
+      logs.push(logEntry);
+      localStorage.setItem("cl_workflow_logs", JSON.stringify(logs));
+      
       // Step 1: WF-01 Profile Analysis
       if (onStepUpdate) onStepUpdate("wf01", "Running WF-01: Profile Enrichment...");
       await delay(1200);
       
-      // Update creator profile enrichment values
-      const updatedProfile = {
-        is_enriched: true,
+      // Update creator profile enrichment values in cl_creator_ai_analysis
+      const aiAnalysis = JSON.parse(localStorage.getItem("cl_creator_ai_analysis") || "{}");
+      aiAnalysis[creatorId] = {
+        id: "ana-" + Math.random().toString(36).substr(2, 9),
+        creator_id: creatorId,
         profile_summary: `${creator.full_name} is a rising regional influencer. Renders high-relevance posts focusing on ${creator.categories.join(" and ")} niches. Shows deep demographic trust and regional affinity within ${creator.regions.join("/")}.`,
-        strengths: creator.strengths && creator.strengths.length ? creator.strengths : ["Direct local language communication", "Authentic lifestyle representation"],
-        weaknesses: creator.weaknesses && creator.weaknesses.length ? creator.weaknesses : ["Low multi-platform cross-posting"],
-        missing_info: creator.missing_info && creator.missing_info.length ? creator.missing_info : ["Detailed monthly click-through ratios"],
-        profile_completeness: Math.min(100, (creator.profile_completeness || 10) + 15)
+        strengths: ["Direct local language communication", "Authentic lifestyle representation"],
+        weaknesses: ["Low multi-platform cross-posting"],
+        missing_information: ["Detailed monthly click-through ratios"],
+        profile_completeness: 85,
+        ai_version: 'Gemini-1.5-pro (Simulated)',
+        workflow_version: 'WF-v1.0 (Simulated)',
+        confidence_score: 0.95,
+        analyzed_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
       };
-      
-      creators[creatorIdx] = { ...creator, ...updatedProfile };
-      localStorage.setItem("cl_creators", JSON.stringify(creators));
+      localStorage.setItem("cl_creator_ai_analysis", JSON.stringify(aiAnalysis));
       
       // Step 2: WF-02 Score Engine
       if (onStepUpdate) onStepUpdate("wf02", "Running WF-02: Score Engine...");
@@ -71,7 +152,7 @@ window.N8N = {
       const regional = creator.regions.includes("Pune") || creator.regions.includes("Indore") ? 92 : 75;
       const consistency = Math.min(100, Math.round(70 + Math.random() * 20));
       const readiness = Math.min(100, Math.round(80 + (creator.pricing_min ? 10 : 0)));
-      const completeness = updatedProfile.profile_completeness;
+      const completeness = aiAnalysis[creatorId].profile_completeness;
       
       // Weighted Formula
       const finalScore = Math.round(
@@ -84,13 +165,15 @@ window.N8N = {
       );
       
       const scoreObj = {
+        creator_id: creatorId,
         intelligence_score: finalScore,
         audience_trust: trust,
-        engagement_rate: engagement,
+        engagement_rate_score: engagement,
         regional_influence: regional,
         content_consistency: consistency,
         brand_readiness: readiness,
-        ai_explanation: `Overall profile rating is ${finalScore}/100. Excellent performance on audience trust (${trust}) and regional influence (${regional}) based on local ${creator.languages.join("/")} engagement indicators.`
+        ai_explanation: `Overall profile rating is ${finalScore}/100. Excellent performance on audience trust (${trust}) and regional influence (${regional}) based on local ${creator.languages.join("/")} engagement indicators.`,
+        updated_at: new Date().toISOString()
       };
       
       const scores = JSON.parse(localStorage.getItem("cl_scores") || "{}");
@@ -104,21 +187,55 @@ window.N8N = {
       const suggestions = [
         {
           id: "sug-" + Math.random().toString(36).substr(2, 5),
+          creator_id: creatorId,
           suggestion_text: `Add more video reels in ${creator.languages[0] || 'regional languages'} to boost your Regional Influence score.`,
           impact_level: "high",
-          expected_improvement: 8
+          expected_improvement: 8,
+          created_at: new Date().toISOString()
         },
         {
           id: "sug-" + Math.random().toString(36).substr(2, 5),
+          creator_id: creatorId,
           suggestion_text: "Fill out missing past collaboration cards to increase your Brand Readiness index.",
           impact_level: "medium",
-          expected_improvement: 5
+          expected_improvement: 5,
+          created_at: new Date().toISOString()
         }
       ];
       
       const suggStore = JSON.parse(localStorage.getItem("cl_suggestions") || "{}");
       suggStore[creatorId] = suggestions;
       localStorage.setItem("cl_suggestions", JSON.stringify(suggStore));
+      
+      // Mark as Completed
+      const currentCreators = JSON.parse(localStorage.getItem("cl_creators") || "[]");
+      const cIdx = currentCreators.findIndex(c => c.id === creatorId);
+      if (cIdx !== -1) {
+        currentCreators[cIdx].ai_status = "Completed";
+        localStorage.setItem("cl_creators", JSON.stringify(currentCreators));
+      }
+
+      // Update AI Job status
+      const currentJobs = JSON.parse(localStorage.getItem("cl_ai_jobs") || "[]");
+      const jobIdx = currentJobs.findIndex(j => j.id === jobId);
+      if (jobIdx !== -1) {
+        currentJobs[jobIdx].status = "Completed";
+        currentJobs[jobIdx].completed_at = new Date().toISOString();
+        localStorage.setItem("cl_ai_jobs", JSON.stringify(currentJobs));
+      }
+
+      // Update log entry
+      const currentLogs = JSON.parse(localStorage.getItem("cl_workflow_logs") || "[]");
+      const logIdx = currentLogs.findIndex(l => l.trace_id === traceId);
+      if (logIdx !== -1) {
+        const executionTime = Date.now() - startTime;
+        currentLogs[logIdx].status = "Completed";
+        currentLogs[logIdx].completed_at = new Date().toISOString();
+        currentLogs[logIdx].execution_time = executionTime;
+        currentLogs[logIdx].execution_time_ms = executionTime;
+        currentLogs[logIdx].output_payload = { success: true, score: finalScore, suggestions_count: suggestions.length };
+        localStorage.setItem("cl_workflow_logs", JSON.stringify(currentLogs));
+      }
       
       if (onStepUpdate) onStepUpdate("complete", "Local AI Enrichment Complete!");
       return { creator_id: creatorId, score: finalScore, suggestions };
@@ -141,9 +258,49 @@ window.N8N = {
           throw new Error(errData.message || response.statusText);
         }
         
-        const data = await response.json();
-        if (onStepUpdate) onStepUpdate("success", "Live Campaign Sourcing Complete!");
-        return data;
+        // Start polling for campaign matching status
+        const startTime = Date.now();
+        const timeout = 60000; // 60 seconds
+        let currentStep = "wf04";
+        
+        if (onStepUpdate) onStepUpdate("wf04", "Running WF-04: Campaign Parse...");
+        
+        while (Date.now() - startTime < timeout) {
+          await new Promise(r => setTimeout(r, 2000));
+          
+          const campaignResponse = await fetch(`${this.backendUrl}/campaigns/${campaignId}`);
+          if (!campaignResponse.ok) {
+            throw new Error("Failed to fetch campaign details during status check.");
+          }
+          const campaign = await campaignResponse.json();
+          
+          if (campaign.ai_status === "Completed") {
+            if (onStepUpdate) onStepUpdate("complete", "Live Campaign Sourcing Complete!");
+            
+            // Return recommendations directly
+            const matchesResponse = await fetch(`${this.backendUrl}/campaigns/${campaignId}/matches`);
+            if (matchesResponse.ok) {
+              return await matchesResponse.json();
+            }
+            return [];
+          } else if (campaign.ai_status === "Failed") {
+            throw new Error("n8n campaign matching workflow failed during execution.");
+          }
+          
+          // Visual updates
+          const elapsed = Date.now() - startTime;
+          if (elapsed > 10000 && currentStep === "wf05") {
+            currentStep = "wf06";
+            if (onStepUpdate) onStepUpdate("wf06", "Running WF-06: Pricing Recommendation...");
+          } else if (elapsed > 4000 && currentStep === "wf04") {
+            currentStep = "wf05";
+            if (onStepUpdate) onStepUpdate("wf05", "Running WF-05: Brand Match Engine...");
+          } else {
+            if (onStepUpdate) onStepUpdate(currentStep, `Running ${currentStep.toUpperCase()}... (${Math.round(elapsed/1000)}s)`);
+          }
+        }
+        
+        throw new Error("Matching workflow timed out after 60 seconds.");
       } catch (err) {
         console.error("n8n campaign matching webhook error:", err);
         if (onStepUpdate) onStepUpdate("error", "Matching error: " + err.message);
@@ -152,12 +309,54 @@ window.N8N = {
     } else {
       // Local Simulation Mode with dynamic calculation
       const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+      const traceId = "sim-" + Math.random().toString(36).substr(2, 9);
+      const startTime = Date.now();
       
       // Fetch Campaign data
       const campaigns = JSON.parse(localStorage.getItem("cl_campaigns") || "[]");
       const campaignIdx = campaigns.findIndex(c => c.id === campaignId);
       if (campaignIdx === -1) throw new Error("Campaign not found");
       const campaign = campaigns[campaignIdx];
+      
+      // Update Campaign Status
+      campaigns[campaignIdx].ai_status = "Processing";
+      localStorage.setItem("cl_campaigns", JSON.stringify(campaigns));
+
+      // Create simulated AI Job
+      const jobs = JSON.parse(localStorage.getItem("cl_ai_jobs") || "[]");
+      const jobId = "job-" + Math.random().toString(36).substr(2, 9);
+      const jobEntry = {
+        id: jobId,
+        job_type: "Match Engine",
+        workflow_name: "campaign_matching",
+        workflow_version: "v1.0",
+        campaign_id: campaignId,
+        status: "Processing",
+        trace_id: traceId,
+        queued_at: new Date().toISOString(),
+        started_at: new Date().toISOString()
+      };
+      jobs.push(jobEntry);
+      localStorage.setItem("cl_ai_jobs", JSON.stringify(jobs));
+
+      // Log in simulated workflow_logs
+      const logs = JSON.parse(localStorage.getItem("cl_workflow_logs") || "[]");
+      const logEntry = {
+        id: "log-" + Math.random().toString(36).substr(2, 9),
+        workflow_name: "campaign_matching",
+        trace_id: traceId,
+        campaign_id: campaignId,
+        status: "Processing",
+        started_at: new Date().toISOString(),
+        execution_id: jobId,
+        workflow_version: "v1.0",
+        prompt_version: "v1.0",
+        ai_model: "Gemini-1.5-pro (Simulated)",
+        execution_time_ms: 0,
+        input_payload: { campaign_id: campaignId, trace_id: traceId, job_id: jobId }
+      };
+      logs.push(logEntry);
+      localStorage.setItem("cl_workflow_logs", JSON.stringify(logs));
       
       // Step 1: WF-04 Campaign Brief Parser
       if (onStepUpdate) onStepUpdate("wf04", "Running WF-04: Campaign Parse...");
@@ -219,7 +418,6 @@ window.N8N = {
         
         matchScore = Math.min(100, matchScore);
         
-        // Save matched properties
         matchedList.push({
           id: "match-" + Math.random().toString(36).substr(2, 5),
           campaign_id: campaignId,
@@ -241,7 +439,6 @@ window.N8N = {
         const creator = creators.find(c => c.id === match.creator_id);
         const cScore = scores[creator.id] ? scores[creator.id].intelligence_score : 70;
         
-        // Base formulation
         const recPrice = Math.round((creator.followers_count * 0.15 + creator.average_views * 0.5) * (cScore / 80));
         const roundedRec = Math.max(5000, Math.round(recPrice / 1000) * 1000);
         
@@ -256,9 +453,53 @@ window.N8N = {
       
       // Save matches globally
       const allMatches = JSON.parse(localStorage.getItem("cl_matches") || "[]");
-      // Remove previous matches for this campaign to avoid duplication
       const cleanedMatches = allMatches.filter(m => m.campaign_id !== campaignId);
       localStorage.setItem("cl_matches", JSON.stringify([...cleanedMatches, ...finalMatches]));
+
+      // Save pricing recommendations globally
+      const allPricing = JSON.parse(localStorage.getItem("cl_pricing_recommendations") || "[]");
+      const cleanedPricing = allPricing.filter(p => p.campaign_id !== campaignId);
+      const newPricing = finalMatches.map(m => ({
+        id: "prc-" + Math.random().toString(36).substr(2, 5),
+        campaign_id: campaignId,
+        creator_id: m.creator_id,
+        min_price: m.min_price,
+        recommended_price: m.recommended_price,
+        premium_price: m.premium_price,
+        pricing_justification: m.pricing_justification,
+        created_at: new Date().toISOString()
+      }));
+      localStorage.setItem("cl_pricing_recommendations", JSON.stringify([...cleanedPricing, ...newPricing]));
+      
+      // Mark Campaign status as Completed
+      const currentCampaigns = JSON.parse(localStorage.getItem("cl_campaigns") || "[]");
+      const campIdx = currentCampaigns.findIndex(c => c.id === campaignId);
+      if (campIdx !== -1) {
+        currentCampaigns[campIdx].ai_status = "Completed";
+        localStorage.setItem("cl_campaigns", JSON.stringify(currentCampaigns));
+      }
+
+      // Update AI Job status
+      const currentJobs = JSON.parse(localStorage.getItem("cl_ai_jobs") || "[]");
+      const jobIdx = currentJobs.findIndex(j => j.id === jobId);
+      if (jobIdx !== -1) {
+        currentJobs[jobIdx].status = "Completed";
+        currentJobs[jobIdx].completed_at = new Date().toISOString();
+        localStorage.setItem("cl_ai_jobs", JSON.stringify(currentJobs));
+      }
+
+      // Update log entry
+      const currentLogs = JSON.parse(localStorage.getItem("cl_workflow_logs") || "[]");
+      const logIdx = currentLogs.findIndex(l => l.trace_id === traceId);
+      if (logIdx !== -1) {
+        const executionTime = Date.now() - startTime;
+        currentLogs[logIdx].status = "Completed";
+        currentLogs[logIdx].completed_at = new Date().toISOString();
+        currentLogs[logIdx].execution_time = executionTime;
+        currentLogs[logIdx].execution_time_ms = executionTime;
+        currentLogs[logIdx].output_payload = { success: true, matches_count: finalMatches.length };
+        localStorage.setItem("cl_workflow_logs", JSON.stringify(currentLogs));
+      }
       
       if (onStepUpdate) onStepUpdate("complete", "Local Campaign Matching Complete!");
       return finalMatches;

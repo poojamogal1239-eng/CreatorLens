@@ -24,7 +24,56 @@ window.DB = {
     }
     
     if (!localStorage.getItem("cl_creators")) {
-      localStorage.setItem("cl_creators", JSON.stringify(window.mockData.creators));
+      const originalCreators = window.mockData.creators;
+      const creators = [];
+      const aiAnalysis = {};
+
+      originalCreators.forEach(c => {
+        aiAnalysis[c.id] = {
+          creator_id: c.id,
+          profile_summary: c.profile_summary,
+          profile_completeness: c.profile_completeness || 85,
+          strengths: c.strengths || [],
+          weaknesses: c.weaknesses || [],
+          missing_information: c.missing_info || [],
+          ai_version: 'Gemini-1.5-pro',
+          workflow_version: 'WF-v1.0',
+          confidence_score: 1.00,
+          analyzed_at: new Date().toISOString()
+        };
+
+        creators.push({
+          id: c.id,
+          creator_code: c.creator_code,
+          full_name: c.full_name,
+          avatar_url: c.avatar_url,
+          bio: c.bio,
+          categories: c.categories,
+          languages: c.languages,
+          regions: c.regions,
+          followers_count: c.followers_count,
+          average_views: c.average_views,
+          pricing_min: c.pricing_min,
+          pricing_premium: c.pricing_premium,
+          engagement_rate: c.engagement_rate,
+          ai_status: c.is_enriched ? 'Completed' : 'Pending'
+        });
+      });
+
+      localStorage.setItem("cl_creators", JSON.stringify(creators));
+      localStorage.setItem("cl_creator_ai_analysis", JSON.stringify(aiAnalysis));
+    }
+
+    if (!localStorage.getItem("cl_workflow_logs")) {
+      localStorage.setItem("cl_workflow_logs", JSON.stringify([]));
+    }
+
+    if (!localStorage.getItem("cl_ai_jobs")) {
+      localStorage.setItem("cl_ai_jobs", JSON.stringify([]));
+    }
+
+    if (!localStorage.getItem("cl_pricing_recommendations")) {
+      localStorage.setItem("cl_pricing_recommendations", JSON.stringify([]));
     }
     
     if (!localStorage.getItem("cl_scores")) {
@@ -178,7 +227,14 @@ window.DB = {
     } else {
       if (role === "creator") {
         const creators = JSON.parse(localStorage.getItem("cl_creators") || "[]");
-        return creators.find(c => c.id === userId) || null;
+        const creator = creators.find(c => c.id === userId) || null;
+        if (creator) {
+          const aiAnalysis = JSON.parse(localStorage.getItem("cl_creator_ai_analysis") || "{}");
+          if (aiAnalysis[userId]) {
+            return { ...creator, ...aiAnalysis[userId] };
+          }
+        }
+        return creator;
       } else {
         const brands = JSON.parse(localStorage.getItem("cl_brands") || "{}");
         return brands[userId] || null;
@@ -198,11 +254,49 @@ window.DB = {
       if (role === "creator") {
         const creators = JSON.parse(localStorage.getItem("cl_creators") || "[]");
         const idx = creators.findIndex(c => c.id === userId);
+        const coreProfile = {
+          id: userId,
+          creator_code: profileData.creator_code || (creators[idx] && creators[idx].creator_code) || ("CR_" + String(creators.length + 5).padStart(3, "0")),
+          full_name: profileData.full_name,
+          avatar_url: profileData.avatar_url,
+          bio: profileData.bio,
+          categories: profileData.categories || [],
+          languages: profileData.languages || [],
+          regions: profileData.regions || [],
+          followers_count: profileData.followers_count || 0,
+          average_views: profileData.average_views || 0,
+          pricing_min: profileData.pricing_min || 0,
+          pricing_premium: profileData.pricing_premium || 0,
+          engagement_rate: profileData.engagement_rate || 0,
+          ai_status: profileData.ai_status || 'Pending'
+        };
+
         if (idx !== -1) {
-          creators[idx] = { ...creators[idx], ...profileData };
-          localStorage.setItem("cl_creators", JSON.stringify(creators));
-          return creators[idx];
+          creators[idx] = coreProfile;
+        } else {
+          creators.push(coreProfile);
         }
+        localStorage.setItem("cl_creators", JSON.stringify(creators));
+
+        // Save simulated AI analysis block if present
+        if (profileData.profile_summary || profileData.strengths) {
+          const aiAnalysis = JSON.parse(localStorage.getItem("cl_creator_ai_analysis") || "{}");
+          aiAnalysis[userId] = {
+            creator_id: userId,
+            profile_summary: profileData.profile_summary || profileData.bio,
+            profile_completeness: profileData.profile_completeness || 100,
+            strengths: profileData.strengths || [],
+            weaknesses: profileData.weaknesses || [],
+            missing_information: profileData.missing_information || profileData.missing_info || [],
+            ai_version: 'Gemini-1.5-pro',
+            workflow_version: 'WF-v1.0',
+            confidence_score: 1.00,
+            analyzed_at: new Date().toISOString()
+          };
+          localStorage.setItem("cl_creator_ai_analysis", JSON.stringify(aiAnalysis));
+        }
+
+        return coreProfile;
       } else {
         const brands = JSON.parse(localStorage.getItem("cl_brands") || "{}");
         brands[userId] = { ...brands[userId], ...profileData };
@@ -289,12 +383,17 @@ window.DB = {
     } else {
       const matches = JSON.parse(localStorage.getItem("cl_matches") || "[]");
       const creators = JSON.parse(localStorage.getItem("cl_creators") || "[]");
+      const aiAnalysis = JSON.parse(localStorage.getItem("cl_creator_ai_analysis") || "{}");
       
       const filtered = matches.filter(m => m.campaign_id === campaignId);
-      return filtered.map(m => ({
-        ...m,
-        creator: creators.find(c => c.id === m.creator_id)
-      }));
+      return filtered.map(m => {
+        const creator = creators.find(c => c.id === m.creator_id);
+        const mergedCreator = creator ? { ...creator, ...(aiAnalysis[creator.id] || {}) } : null;
+        return {
+          ...m,
+          creator: mergedCreator
+        };
+      });
     }
   },
 

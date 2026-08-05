@@ -1440,8 +1440,7 @@ window.App = {
 
   openCreatorDetails: async function(creatorId, activeCampaignId = null) {
     try {
-      const creators = JSON.parse(localStorage.getItem("cl_creators") || "[]");
-      const creator = creators.find(c => c.id === creatorId);
+      const creator = await window.DB.getProfile(creatorId, "creator");
       if (!creator) return;
       
       const scores = await window.DB.getCreatorScores(creatorId) || { intelligence_score: 50 };
@@ -1538,8 +1537,7 @@ window.App = {
       const campaigns = await window.DB.getAllCampaigns();
       const creators = JSON.parse(localStorage.getItem("cl_creators") || "[]");
       
-      const enrichedCount = creators.filter(c => c.is_enriched).length;
-      
+      const enrichedCount = creators.filter(c => c.ai_status === 'Completed').length;
       document.getElementById("admin-stat-users").textContent = users.length;
       document.getElementById("admin-stat-campaigns").textContent = campaigns.length;
       document.getElementById("admin-stat-enriched").textContent = enrichedCount;
@@ -2414,7 +2412,7 @@ window.App = {
         pricing_min: minPrice,
         pricing_premium: premPrice,
         profile_completeness: 100,
-        is_enriched: true,
+        ai_status: 'Completed',
         profile_summary: bio
       };
       

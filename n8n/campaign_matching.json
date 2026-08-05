@@ -1,0 +1,399 @@
+{
+  "name": "CreatorLens - Campaign Sourcing & Matching Workflow",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "campaign-matching",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "1e8df5db-8f83-4a1d-b8d9-6c3e7f41cf6b",
+      "name": "Webhook Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [
+        100,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "table": "ai_jobs",
+        "id": "={{ $json.body.job_id }}",
+        "columns": [
+          "status",
+          "started_at"
+        ],
+        "values": {
+          "status": "Processing",
+          "started_at": "={{ new Date().toISOString() }}"
+        }
+      },
+      "id": "1e8df5db-8f83-4a1d-b8d9-6c3e7f41cf6a",
+      "name": "Update AI Job - Processing",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        280,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "table": "campaigns",
+        "id": "={{ $('Webhook Trigger').first().json.body.campaign_id }}"
+      },
+      "id": "2e8df5db-8f83-4a1d-b8d9-6c3e7f41cf6c",
+      "name": "Fetch Campaign Brief",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        450,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "model": "gemini-1.5-pro",
+        "prompt": "=Analyze this campaign brief objective:\nTitle: {{ $json.title }}\nObjective: {{ $json.objective }}\nCategory: {{ $json.category }}\nTarget Audience: {{ $json.target_audience }}\nCreator Type Requirement: {{ $json.creator_type }}\n\nExtract and return a JSON object with:\n1. ai_keywords (array of 4-5 relevant keywords/tags)\n2. ai_tier (string representing demographic tier, e.g. \"Micro-Influencer (10K - 100K)\" or \"Mid-Tier (100K+)\")"
+      },
+      "id": "3e8df5db-8f83-4a1d-b8d9-6c3e7f41cf6d",
+      "name": "Gemini - Parse Brief (WF-04)",
+      "type": "n8n-nodes-base.googleGemini",
+      "typeVersion": 1,
+      "position": [
+        630,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "table": "campaigns",
+        "id": "={{ $('Webhook Trigger').item.json.body.campaign_id }}",
+        "columns": [
+          "ai_keywords",
+          "ai_tier"
+        ],
+        "values": {
+          "ai_keywords": "={{ $json.ai_keywords }}",
+          "ai_tier": "={{ $json.ai_tier }}"
+        }
+      },
+      "id": "4e8df5db-8f83-4a1d-b8d9-6c3e7f41cf6e",
+      "name": "Update Campaign Info",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        810,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "table": "creators",
+        "options": {}
+      },
+      "id": "5e8df5db-8f83-4a1d-b8d9-6c3e7f41cf6f",
+      "name": "Fetch All Candidates",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        990,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "table": "creator_scores",
+        "options": {}
+      },
+      "id": "6e8df5db-8f83-4a1d-b8d9-6c3e7f41cf7a",
+      "name": "Fetch Candidate Scores",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        1170,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const campaign = $('Fetch Campaign Brief').first().json;\nconst creators = $('Fetch All Candidates').all().map(item => item.json);\nconst scoresList = $('Fetch Candidate Scores').all().map(item => item.json);\n\nconst scoresMap = {};\nscoresList.forEach(s => {\n  scoresMap[s.creator_id] = s;\n});\n\nconst matchedList = [];\n\ncreators.forEach(creator => {\n  let matchScore = 50; // Base score\n  const explanationLines = [];\n  \n  // Language match (+15)\n  if (creator.languages.includes(campaign.language)) {\n    matchScore += 15;\n    explanationLines.push(\"Language alignment match\");\n  }\n  \n  // Region match (+15)\n  if (creator.regions.includes(campaign.region)) {\n    matchScore += 15;\n    explanationLines.push(`Strong regional footprint in ${campaign.region}`);\n  }\n  \n  // Niche match (+15)\n  if (creator.categories.includes(campaign.category)) {\n    matchScore += 15;\n    explanationLines.push(`Matches campaign category: ${campaign.category}`);\n  }\n  \n  // Creator Intelligence Score contribution (+15)\n  const scores = scoresMap[creator.id];\n  const intelligence = scores ? scores.intelligence_score : 50;\n  const scoreWeight = Math.round(intelligence * 0.15);\n  matchScore += scoreWeight;\n  if (intelligence >= 80) {\n    explanationLines.push(\"Exceptional Creator Intelligence profile\");\n  }\n  \n  // Budget alignment check (+10)\n  if (campaign.budget >= creator.pricing_min) {\n    matchScore += 10;\n    explanationLines.push(\"Pricing fits within campaign budget\");\n  }\n  \n  matchScore = Math.min(100, matchScore);\n  \n  // Price Recommendation (WF-06)\n  const recPrice = Math.round((creator.followers_count * 0.15 + creator.average_views * 0.5) * (intelligence / 80));\n  const roundedRec = Math.max(5000, Math.round(recPrice / 1000) * 1000);\n  const minPrice = Math.round(roundedRec * 0.8);\n  const premiumPrice = Math.round(roundedRec * 1.3);\n  const pricingJustification = `Fair valuation calculated at ₹${roundedRec.toLocaleString('en-IN')} based on ${creator.engagement_rate}% engagement rate, ${creator.average_views} average views, and verified ${creator.languages.join('/')} content footprint.`;\n  \n  matchedList.push({\n    campaign_id: campaign.id,\n    creator_id: creator.id,\n    match_score: matchScore,\n    match_explanation: explanationLines.join(', ') || 'General profile alignment',\n    min_price: minPrice,\n    recommended_price: roundedRec,\n    premium_price: premiumPrice,\n    pricing_justification: pricingJustification,\n    status: 'recommended'\n  });\n});\n\n// Sort by match score descending\nmatchedList.sort((a, b) => b.match_score - a.match_score);\n\nreturn matchedList.slice(0, 10); // Return top 10 matches"
+      },
+      "id": "7e8df5db-8f83-4a1d-b8d9-6c3e7f41cf7b",
+      "name": "JS - Match & Price Recommendations (WF-05/06)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1350,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "insert",
+        "table": "campaign_matches",
+        "columns": [
+          "campaign_id",
+          "creator_id",
+          "match_score",
+          "match_explanation",
+          "min_price",
+          "recommended_price",
+          "premium_price",
+          "pricing_justification",
+          "status"
+        ],
+        "values": {
+          "campaign_id": "={{ $json.campaign_id }}",
+          "creator_id": "={{ $json.creator_id }}",
+          "match_score": "={{ $json.match_score }}",
+          "match_explanation": "={{ $json.match_explanation }}",
+          "min_price": "={{ $json.min_price }}",
+          "recommended_price": "={{ $json.recommended_price }}",
+          "premium_price": "={{ $json.premium_price }}",
+          "pricing_justification": "={{ $json.pricing_justification }}",
+          "status": "={{ $json.status }}"
+        }
+      },
+      "id": "8e8df5db-8f83-4a1d-b8d9-6c3e7f41cf7c",
+      "name": "Save Campaign Matches",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        1530,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "table": "campaigns",
+        "id": "={{ $('Webhook Trigger').first().json.body.campaign_id }}",
+        "columns": [
+          "ai_status"
+        ],
+        "values": {
+          "ai_status": "Completed"
+        }
+      },
+      "id": "9e8df5db-8f83-4a1d-b8d9-6c3e7f41cf7d",
+      "name": "Update Campaign AI Status",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        1710,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "table": "ai_jobs",
+        "id": "={{ $('Webhook Trigger').first().json.body.job_id }}",
+        "columns": [
+          "status",
+          "completed_at"
+        ],
+        "values": {
+          "status": "Completed",
+          "completed_at": "={{ new Date().toISOString() }}"
+        }
+      },
+      "id": "ae8df5db-8f83-4a1d-b8d9-6c3e7f41cf7e",
+      "name": "Update AI Job - Completed",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        1890,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "table": "workflow_logs",
+        "id": "={{ $('Webhook Trigger').first().json.body.trace_id }}",
+        "columns": [
+          "status",
+          "completed_at",
+          "execution_time_ms",
+          "output_payload"
+        ],
+        "values": {
+          "status": "Completed",
+          "completed_at": "={{ new Date().toISOString() }}",
+          "execution_time_ms": "={{ Date.now() - new Date($('Webhook Trigger').first().json.timestamp).getTime() }}",
+          "output_payload": "={{ JSON.stringify({ success: true, ai_model: 'Gemini-1.5-pro' }) }}"
+        }
+      },
+      "id": "ae8df5db-8f83-4a1d-b8d9-6c3e7f41cf8a",
+      "name": "Update Workflow Log",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        2070,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "{\n  \"success\": true,\n  \"message\": \"Campaign match sourcing complete.\",\n  \"campaign_id\": \"{{ $('Webhook Trigger').first().json.body.campaign_id }}\",\n  \"job_id\": \"{{ $('Webhook Trigger').first().json.body.job_id }}\",\n  \"trace_id\": \"{{ $('Webhook Trigger').first().json.body.trace_id }}\"\n}",
+        "options": {}
+      },
+      "id": "be8df5db-8f83-4a1d-b8d9-6c3e7f41cf7f",
+      "name": "Respond to Webhook",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        2250,
+        300
+      ]
+    }
+  ],
+  "connections": {
+    "Webhook Trigger": {
+      "main": [
+        [
+          {
+            "node": "Update AI Job - Processing",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update AI Job - Processing": {
+      "main": [
+        [
+          {
+            "node": "Fetch Campaign Brief",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Campaign Brief": {
+      "main": [
+        [
+          {
+            "node": "Gemini - Parse Brief (WF-04)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gemini - Parse Brief (WF-04)": {
+      "main": [
+        [
+          {
+            "node": "Update Campaign Info",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update Campaign Info": {
+      "main": [
+        [
+          {
+            "node": "Fetch All Candidates",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch All Candidates": {
+      "main": [
+        [
+          {
+            "node": "Fetch Candidate Scores",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Candidate Scores": {
+      "main": [
+        [
+          {
+            "node": "JS - Match & Price Recommendations (WF-05/06)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "JS - Match & Price Recommendations (WF-05/06)": {
+      "main": [
+        [
+          {
+            "node": "Save Campaign Matches",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Save Campaign Matches": {
+      "main": [
+        [
+          {
+            "node": "Update Campaign AI Status",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update Campaign AI Status": {
+      "main": [
+        [
+          {
+            "node": "Update AI Job - Completed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update AI Job - Completed": {
+      "main": [
+        [
+          {
+            "node": "Update Workflow Log",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update Workflow Log": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {},
+  "meta": {
+    "instanceId": "creatorlens-instance"
+  }
+}

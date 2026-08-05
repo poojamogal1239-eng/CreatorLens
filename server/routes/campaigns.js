@@ -82,22 +82,48 @@ router.get('/:id', async (req, res, next) => {
   }
 });
 
-// GET /api/campaigns/:id/matches (Get recommendations for a campaign)
+// GET /api/campaigns/:id/matches (Get recommendations for a campaign joined with pricing recommendations)
 router.get('/:id/matches', async (req, res, next) => {
   const { id } = req.params;
   try {
-    // Perform a join query to select match data and corresponding creator details
-    const { data, error } = await supabase
+    const { data: matches, error: matchesErr } = await supabase
       .from('campaign_matches')
       .select('*, creator:creators(*)')
       .eq('campaign_id', id)
       .order('match_score', { ascending: false });
 
-    if (error) {
-      return res.status(500).json({ error: 'Database Error', message: error.message });
+    if (matchesErr) {
+      return res.status(500).json({ error: 'Database Error', message: matchesErr.message });
     }
 
-    res.json(data);
+    const { data: pricingRecs, error: pricingErr } = await supabase
+      .from('pricing_recommendations')
+      .select('*')
+      .eq('campaign_id', id);
+
+    if (pricingErr) {
+      console.error("Failed to query pricing recommendations:", pricingErr.message);
+    }
+
+    const pricingMap = {};
+    if (pricingRecs) {
+      pricingRecs.forEach(p => {
+        pricingMap[p.creator_id] = p;
+      });
+    }
+
+    const enrichedMatches = matches.map(m => {
+      const p = pricingMap[m.creator_id];
+      return {
+        ...m,
+        min_price: p ? p.min_price : m.min_price,
+        recommended_price: p ? p.recommended_price : m.recommended_price,
+        premium_price: p ? p.premium_price : m.premium_price,
+        pricing_justification: p ? p.pricing_justification : m.pricing_justification
+      };
+    });
+
+    res.json(enrichedMatches);
   } catch (err) {
     next(err);
   }
@@ -113,12 +139,59 @@ router.post('/:id/match', async (req, res, next) => {
   }
 
   try {
-    console.log(`Triggering n8n Campaign Match Sourcing engine for campaign: ${id}`);
+    const trace_id = require('crypto').randomUUID();
+
+    // 1. Update campaign status to Processing
+    await supabase
+      .from('campaigns')
+      .update({ ai_status: 'Processing' })
+      .eq('id', id);
+
+    // 2. Create AI Job record in ai_jobs table
+    const { data: jobData, error: jobErr } = await supabase
+      .from('ai_jobs')
+      .insert([{
+        job_type: 'Match Engine',
+        workflow_name: 'campaign_matching',
+        workflow_version: 'v1.0',
+        campaign_id: id,
+        status: 'Processing',
+        trace_id: trace_id,
+        queued_at: new Date().toISOString(),
+        started_at: new Date().toISOString()
+      }])
+      .select()
+      .single();
+
+    if (jobErr) throw jobErr;
+    const job_id = jobData.id;
+
+    // 3. Insert record into workflow_logs
+    await supabase
+      .from('workflow_logs')
+      .insert([{
+        workflow_name: 'campaign_matching',
+        trace_id: trace_id,
+        campaign_id: id,
+        status: 'Processing',
+        started_at: new Date().toISOString(),
+        execution_id: job_id,
+        workflow_version: 'v1.0',
+        input_payload: { campaign_id: id, trace_id, job_id }
+      }]);
+
+    console.log(`Triggering n8n Campaign Match Sourcing engine for campaign: ${id} | Job: ${job_id} | Trace: ${trace_id}`);
     
+    // Call the n8n webhook (asynchronous trigger)
     const response = await fetch(webhookUrl, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ campaign_id: id })
+      body: JSON.stringify({
+        job_id,
+        campaign_id: id,
+        workflow: 'campaign_matching',
+        trace_id: trace_id
+      })
     });
 
     if (!response.ok) {
@@ -140,6 +213,16 @@ router.post('/:id/match', async (req, res, next) => {
     });
   } catch (err) {
     console.error('Error triggering n8n campaign matching:', err);
+    
+    try {
+      await supabase
+        .from('campaigns')
+        .update({ ai_status: 'Failed' })
+        .eq('id', id);
+    } catch (dbErr) {
+      console.error('Failed to reset campaign status to Failed on trigger error:', dbErr);
+    }
+
     res.status(502).json({ error: 'n8n Integration Error', message: err.message });
   }
 });
