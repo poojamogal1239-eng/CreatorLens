@@ -1,7 +1,7 @@
 // n8n AI Workflow Client adapter (Dual-Mode: Real Webhooks vs. Simulated Client-Side Pipeline)
 
 window.N8N = {
-  backendUrl: "http://localhost:5000/api",
+  backendUrl: localStorage.getItem("cl_backend_url") || ((window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1") ? "http://localhost:5000/api" : window.location.origin + "/api"),
 
   isLive: function() {
     return localStorage.getItem("cl_use_live") === "true";
@@ -144,35 +144,62 @@ window.N8N = {
       if (onStepUpdate) onStepUpdate("wf02", "Running WF-02: Score Engine...");
       await delay(1200);
       
-      // Calculate scores dynamically based on stats
-      const baseEngagement = creator.engagement_rate || 5.0;
+      const social = creator.social_links || {};
       
-      const trust = Math.min(100, Math.round(75 + baseEngagement * 2));
-      const engagement = Math.min(100, Math.round(60 + baseEngagement * 4));
-      const regional = creator.regions.includes("Pune") || creator.regions.includes("Indore") ? 92 : 75;
-      const consistency = Math.min(100, Math.round(70 + Math.random() * 20));
-      const readiness = Math.min(100, Math.round(80 + (creator.pricing_min ? 10 : 0)));
-      const completeness = aiAnalysis[creatorId].profile_completeness;
-      
-      // Weighted Formula
-      const finalScore = Math.round(
-        trust * 0.25 +
-        engagement * 0.20 +
-        regional * 0.20 +
-        consistency * 0.15 +
-        readiness * 0.10 +
-        completeness * 0.10
-      );
-      
+      // Check if metrics are connected/verified (which is false for MVP manual entries)
+      const isIgConnected = social.instagram && social.instagram.is_connected === true;
+      const isYtConnected = social.youtube && social.youtube.is_connected === true;
+      const hasVerifiedMetrics = isIgConnected || isYtConnected;
+
+      // 1. Engagement Index (Needs verified social metrics connection)
+      const engagement = hasVerifiedMetrics 
+        ? Math.min(100, Math.round(60 + (creator.engagement_rate || 0) * 4)) 
+        : -1;
+
+      // 2. Audience Trust Index (Needs verified metrics + age range)
+      const hasAge = creator.audience_metadata && creator.audience_metadata.age_range && creator.audience_metadata.age_range !== 'unavailable';
+      const trust = (hasVerifiedMetrics && hasAge)
+        ? Math.min(100, Math.round(75 + (creator.engagement_rate || 0) * 2))
+        : -1;
+
+      // 3. Regional Influence Index (Needs creator location + audience location)
+      const hasLoc = creator.city && creator.state && creator.audience_metadata && creator.audience_metadata.location;
+      const regional = hasLoc ? 85 : -1;
+
+      // 4. Content Consistency Index (Needs posting frequency + formats)
+      const freq = creator.audience_metadata ? creator.audience_metadata.posting_frequency : null;
+      let consistency = -1;
+      if (freq && creator.audience_metadata.formats && creator.audience_metadata.formats.length > 0) {
+        if (freq === "Daily") consistency = 95;
+        else if (freq === "2-3 times a week") consistency = 85;
+        else if (freq === "Weekly") consistency = 75;
+        else if (freq === "Bi-weekly") consistency = 60;
+        else if (freq === "Monthly") consistency = 45;
+      }
+
+      // 5. Brand Readiness Index (Needs brand category + rates card + collab email)
+      const hasReadyCollab = creator.collab_metadata && 
+        creator.collab_metadata.target_brands && creator.collab_metadata.target_brands.length > 0 &&
+        creator.pricing_min > 0 && creator.collab_metadata.contact_email;
+      const readiness = hasReadyCollab ? 80 : -1;
+
+      // Calculate overall Intelligence Score from valid dimensions only
+      const validScores = [engagement, trust, regional, consistency, readiness].filter(s => s >= 0);
+      const overallScore = validScores.length > 0 
+        ? Math.round(validScores.reduce((sum, s) => sum + s, 0) / validScores.length)
+        : -1;
+
       const scoreObj = {
         creator_id: creatorId,
-        intelligence_score: finalScore,
+        intelligence_score: overallScore,
         audience_trust: trust,
         engagement_rate_score: engagement,
         regional_influence: regional,
         content_consistency: consistency,
         brand_readiness: readiness,
-        ai_explanation: `Overall profile rating is ${finalScore}/100. Excellent performance on audience trust (${trust}) and regional influence (${regional}) based on local ${creator.languages.join("/")} engagement indicators.`,
+        ai_explanation: overallScore >= 0 
+          ? `Overall score is ${overallScore}/100. Evaluated from connected regional metrics, frequency of posting, and brand rates.`
+          : 'Insufficient data to compute overall Creator Intelligence. Connect and verify platforms to build your score.',
         updated_at: new Date().toISOString()
       };
       

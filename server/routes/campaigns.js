@@ -190,7 +190,8 @@ router.post('/:id/match', async (req, res, next) => {
         job_id,
         campaign_id: id,
         workflow: 'campaign_matching',
-        trace_id: trace_id
+        trace_id: trace_id,
+        gemini_api_key: process.env.GEMINI_API_KEY
       })
     });
 
@@ -224,6 +225,60 @@ router.post('/:id/match', async (req, res, next) => {
     }
 
     res.status(502).json({ error: 'n8n Integration Error', message: err.message });
+  }
+});
+
+// PATCH /api/campaigns/:id (Update campaign details and status)
+router.patch('/:id', async (req, res, next) => {
+  const { id } = req.params;
+  const { title, objective, category, target_audience, region, language, budget, creator_type, status } = req.body;
+
+  try {
+    const updateData = {};
+    if (title !== undefined) updateData.title = title;
+    if (objective !== undefined) updateData.objective = objective;
+    if (category !== undefined) updateData.category = category;
+    if (target_audience !== undefined) updateData.target_audience = target_audience;
+    if (region !== undefined) updateData.region = region;
+    if (language !== undefined) updateData.language = language;
+    if (budget !== undefined) updateData.budget = parseInt(budget);
+    if (creator_type !== undefined) updateData.creator_type = creator_type;
+    if (status !== undefined) updateData.status = status;
+    updateData.updated_at = new Date().toISOString();
+
+    const { data, error } = await supabase
+      .from('campaigns')
+      .update(updateData)
+      .eq('id', id)
+      .select()
+      .single();
+
+    if (error) {
+      return res.status(500).json({ error: 'Database Error', message: error.message });
+    }
+
+    res.json({ success: true, campaign: data });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// DELETE /api/campaigns/:id (Delete a campaign brief)
+router.delete('/:id', async (req, res, next) => {
+  const { id } = req.params;
+  try {
+    const { error } = await supabase
+      .from('campaigns')
+      .delete()
+      .eq('id', id);
+
+    if (error) {
+      return res.status(500).json({ error: 'Database Error', message: error.message });
+    }
+
+    res.json({ success: true, message: 'Campaign deleted successfully' });
+  } catch (err) {
+    next(err);
   }
 });
 

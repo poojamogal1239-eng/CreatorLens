@@ -1,12 +1,18 @@
-// Supabase Database Adapter (Dual-Mode: Local Demo State vs. REST API Backend)
+// Force Live mode to be active for testing
+localStorage.setItem("cl_use_live", "true");
 
 window.DB = {
   // Backend URL configuration
-  backendUrl: "http://localhost:5000/api",
+  backendUrl: localStorage.getItem("cl_backend_url") || ((window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1") ? "http://localhost:5000/api" : window.location.origin + "/api"),
 
   // Check if live config is set
   isLive: function() {
-    return localStorage.getItem("cl_use_live") === "true";
+    const val = localStorage.getItem("cl_use_live");
+    if (val === null) {
+      localStorage.setItem("cl_use_live", "true");
+      return true;
+    }
+    return val === "true";
   },
 
   // Initialize data stores on load
@@ -140,11 +146,11 @@ window.DB = {
   },
 
   // Auth Operations
-  register: async function(email, password, role) {
+  register: async function(email, password, role, full_name) {
     if (this.isLive()) {
       const data = await this.request("auth/register", {
         method: "POST",
-        body: JSON.stringify({ email, password, role })
+        body: JSON.stringify({ email, password, role, full_name })
       });
       return data.user;
     } else {
@@ -166,7 +172,7 @@ window.DB = {
         creators.push({
           id,
           creator_code,
-          full_name: email.split("@")[0],
+          full_name: full_name || email.split("@")[0],
           avatar_url: "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150",
           bio: "New Creator Onboard",
           categories: [],
@@ -268,7 +274,13 @@ window.DB = {
           pricing_min: profileData.pricing_min || 0,
           pricing_premium: profileData.pricing_premium || 0,
           engagement_rate: profileData.engagement_rate || 0,
-          ai_status: profileData.ai_status || 'Pending'
+          ai_status: profileData.ai_status || 'Not Started',
+          profile_status: profileData.profile_status || 'Incomplete',
+          city: profileData.city || null,
+          state: profileData.state || null,
+          social_links: profileData.social_links || {},
+          audience_metadata: profileData.audience_metadata || {},
+          collab_metadata: profileData.collab_metadata || {}
         };
 
         if (idx !== -1) {
@@ -364,6 +376,23 @@ window.DB = {
     }
   },
 
+  deleteCampaign: async function(campId) {
+    if (this.isLive()) {
+      return await this.request(`campaigns/${campId}`, {
+        method: "DELETE"
+      });
+    } else {
+      const campaigns = JSON.parse(localStorage.getItem("cl_campaigns") || "[]");
+      const idx = campaigns.findIndex(c => c.id === campId);
+      if (idx !== -1) {
+        campaigns.splice(idx, 1);
+        localStorage.setItem("cl_campaigns", JSON.stringify(campaigns));
+        return true;
+      }
+      return false;
+    }
+  },
+
   getAllCampaigns: async function() {
     if (this.isLive()) {
       return await this.request("campaigns");
@@ -438,11 +467,13 @@ window.DB = {
     }
   },
 
-  updateCollabStatus: async function(collabId, status) {
+  updateCollabStatus: async function(collabId, status, price_justification = undefined) {
     if (this.isLive()) {
+      const body = { status };
+      if (price_justification !== undefined) body.price_justification = price_justification;
       const data = await this.request(`collaborations/${collabId}`, {
         method: "PATCH",
-        body: JSON.stringify({ status })
+        body: JSON.stringify(body)
       });
       return data.collaboration;
     } else {
@@ -450,10 +481,139 @@ window.DB = {
       const idx = collabs.findIndex(c => c.id === collabId);
       if (idx !== -1) {
         collabs[idx].status = status;
+        if (price_justification !== undefined) collabs[idx].price_justification = price_justification;
         localStorage.setItem("cl_collabs", JSON.stringify(collabs));
         return collabs[idx];
       }
       return null;
+    }
+  },
+
+  getCollabsForBrand: async function(brandId) {
+    if (this.isLive()) {
+      return await this.request(`collaborations?brand_id=${brandId}`);
+    } else {
+      const collabs = JSON.parse(localStorage.getItem("cl_collabs") || "[]");
+      const campaigns = JSON.parse(localStorage.getItem("cl_campaigns") || "[]");
+      const creators = JSON.parse(localStorage.getItem("cl_creators") || "[]");
+      
+      const filtered = collabs.filter(c => c.brand_id === brandId);
+      return filtered.map(c => ({
+        ...c,
+        campaign: campaigns.find(camp => camp.id === c.campaign_id),
+        creator: creators.find(cr => cr.id === c.creator_id)
+      }));
+    }
+  },
+
+  updateCampaign: async function(campaignId, updateData) {
+    if (this.isLive()) {
+      const data = await this.request(`campaigns/${campaignId}`, {
+        method: "PATCH",
+        body: JSON.stringify(updateData)
+      });
+      return data.campaign;
+    } else {
+      const campaigns = JSON.parse(localStorage.getItem("cl_campaigns") || "[]");
+      const idx = campaigns.findIndex(c => c.id === campaignId);
+      if (idx !== -1) {
+        campaigns[idx] = { ...campaigns[idx], ...updateData };
+        localStorage.setItem("cl_campaigns", JSON.stringify(campaigns));
+        return campaigns[idx];
+      }
+      throw new Error("Campaign not found");
+    }
+  },
+
+  getAdminDashboard: async function() {
+    if (this.isLive()) {
+      return await this.request("admin/dashboard");
+    } else {
+      const creators = JSON.parse(localStorage.getItem("cl_creators") || "[]");
+      const brands = JSON.parse(localStorage.getItem("cl_brands") || "[]");
+      const campaigns = JSON.parse(localStorage.getItem("cl_campaigns") || "[]");
+      const collabs = JSON.parse(localStorage.getItem("cl_collabs") || "[]");
+      return {
+        stats: {
+          totalCreators: creators.length,
+          totalBrands: brands.length,
+          activeCampaigns: campaigns.filter(c => c.status === "active").length,
+          activeCollaborations: collabs.filter(c => c.status === "accepted" || c.status === "completed").length
+        },
+        recentActivity: [
+          { type: 'creator_registration', message: 'New Creator registered: "Rahul Kapoor"', created_at: new Date().toISOString() },
+          { type: 'campaign_published', message: 'Campaign published: "Masala Chai Rollout"', created_at: new Date().toISOString() }
+        ]
+      };
+    }
+  },
+
+  getAdminCreators: async function() {
+    if (this.isLive()) {
+      return await this.request("admin/creators");
+    } else {
+      const creators = JSON.parse(localStorage.getItem("cl_creators") || "[]");
+      const scores = JSON.parse(localStorage.getItem("cl_scores") || "{}");
+      return creators.map(c => ({
+        ...c,
+        creator_scores: scores[c.id] ? [scores[c.id]] : []
+      }));
+    }
+  },
+
+  getAdminBrands: async function() {
+    if (this.isLive()) {
+      return await this.request("admin/brands");
+    } else {
+      const brands = JSON.parse(localStorage.getItem("cl_brands") || "[]");
+      const campaigns = JSON.parse(localStorage.getItem("cl_campaigns") || "[]");
+      const collabs = JSON.parse(localStorage.getItem("cl_collabs") || "[]");
+      return brands.map(b => {
+        const brandCamps = campaigns.filter(c => c.brand_id === b.id);
+        const brandCollabs = collabs.filter(c => c.brand_id === b.id);
+        return {
+          ...b,
+          campaigns_count: brandCamps.length,
+          active_campaigns_count: brandCamps.filter(c => c.status === "active").length,
+          collaborations_count: brandCollabs.length
+        };
+      });
+    }
+  },
+
+  getAdminCampaigns: async function() {
+    if (this.isLive()) {
+      return await this.request("admin/campaigns");
+    } else {
+      const campaigns = JSON.parse(localStorage.getItem("cl_campaigns") || "[]");
+      const brands = JSON.parse(localStorage.getItem("cl_brands") || "[]");
+      const collabs = JSON.parse(localStorage.getItem("cl_collabs") || "[]");
+      return campaigns.map(c => {
+        const brand = brands.find(b => b.id === c.brand_id);
+        const campCollabs = collabs.filter(col => col.campaign_id === c.id && col.initiated_by === 'creator');
+        return {
+          ...c,
+          brand_name: brand ? brand.company_name : "A Brand",
+          applications_count: campCollabs.length
+        };
+      });
+    }
+  },
+
+  getAdminCollaborations: async function() {
+    if (this.isLive()) {
+      return await this.request("admin/collaborations");
+    } else {
+      const collabs = JSON.parse(localStorage.getItem("cl_collabs") || "[]");
+      const campaigns = JSON.parse(localStorage.getItem("cl_campaigns") || "[]");
+      const creators = JSON.parse(localStorage.getItem("cl_creators") || "[]");
+      const brands = JSON.parse(localStorage.getItem("cl_brands") || "[]");
+      return collabs.map(c => ({
+        ...c,
+        campaign: campaigns.find(camp => camp.id === c.campaign_id),
+        creator: creators.find(cr => cr.id === c.creator_id),
+        brand: brands.find(b => b.id === c.brand_id)
+      }));
     }
   }
 };

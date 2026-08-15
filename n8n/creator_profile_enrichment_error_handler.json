@@ -1,0 +1,118 @@
+{
+  "name": "CreatorLens - Creator Profile Enrichment Error Handler",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "ad8df5db-8f83-4a1d-b8d9-6c3e7f41cf6b",
+      "name": "Error Trigger",
+      "type": "n8n-nodes-base.errorTrigger",
+      "typeVersion": 1,
+      "position": [
+        100,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "tableId": "creators",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "id",
+              "operator": "equal",
+              "keyValue": "={{ $json.execution.input.body.creator_id }}"
+            }
+          ]
+        },
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "ai_status",
+              "fieldValue": "Failed"
+            }
+          ]
+        }
+      },
+      "id": "ad8df5db-8f83-4a1d-b8d9-6c3e7f41cf74",
+      "name": "Update Creator Status - Failed",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        300,
+        300
+      ],
+      "credentials": {
+        "supabaseApi": {
+          "id": "supabaseApi",
+          "name": "Supabase"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "tableId": "ai_jobs",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "id",
+              "operator": "equal",
+              "keyValue": "={{ $json.execution.input.body.job_id }}"
+            }
+          ]
+        },
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "status",
+              "fieldValue": "Failed"
+            }
+          ]
+        }
+      },
+      "id": "9d8df5db-8f83-4a1d-b8d9-6c3e7f41cf6b",
+      "name": "Update Job Status - Failed",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        500,
+        300
+      ],
+      "credentials": {
+        "supabaseApi": {
+          "id": "supabaseApi",
+          "name": "Supabase"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Error Trigger": {
+      "main": [
+        [
+          {
+            "node": "Update Creator Status - Failed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update Creator Status - Failed": {
+      "main": [
+        [
+          {
+            "node": "Update Job Status - Failed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {},
+  "meta": {
+    "instanceId": "6c4ba7bd9cc2fa6df405d4b5df5bead2ee2e5bfba9c83693e506df1db2c4516a"
+  }
+}

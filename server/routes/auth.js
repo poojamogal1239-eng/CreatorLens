@@ -4,7 +4,7 @@ const supabase = require('../config/supabase');
 
 // POST /api/auth/register
 router.post('/register', async (req, res, next) => {
-  const { email, password, role } = req.body;
+  const { email, password, role, full_name } = req.body;
   
   if (!email || !password || !role) {
     return res.status(400).json({ error: 'Bad Request', message: 'Email, password, and role are required.' });
@@ -23,6 +23,9 @@ router.post('/register', async (req, res, next) => {
     }
 
     const user = data.user;
+    if (!user) {
+      return res.status(400).json({ error: 'Auth Error', message: 'User already exists in auth backend.' });
+    }
 
     // 2. Insert role mapper profile in public.users
     const { error: dbError } = await supabase
@@ -36,16 +39,26 @@ router.post('/register', async (req, res, next) => {
     }
 
     // 3. Initialize profile tables
+    let generatedCreatorCode = null;
     if (role === 'creator') {
-      const { error: creatorError } = await supabase
+      const { data: creatorData, error: creatorError } = await supabase
         .from('creators')
         .insert([{ 
           id: user.id, 
-          full_name: email.split('@')[0],
+          full_name: full_name || email.split('@')[0],
           avatar_url: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150',
-          bio: 'Regional Content Creator'
-        }]);
-      if (creatorError) console.error('Failed to create creator profile row:', creatorError);
+          bio: 'Regional Content Creator',
+          profile_status: 'Incomplete',
+          ai_status: 'Not Started'
+        }])
+        .select()
+        .single();
+      
+      if (creatorError) {
+        console.error('Failed to create creator profile row:', creatorError);
+      } else {
+        generatedCreatorCode = creatorData.creator_code;
+      }
     } else if (role === 'brand') {
       const { error: brandError } = await supabase
         .from('brands')
@@ -74,8 +87,9 @@ router.post('/login', async (req, res, next) => {
   }
 
   try {
-    // 1. Authenticate credentials
-    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+    // 1. Authenticate credentials using a temporary client to prevent global client session state pollution
+    const tempClient = supabase.createTempClient();
+    const { data, error } = await tempClient.auth.signInWithPassword({ email, password });
 
     if (error) {
       return res.status(401).json({ error: 'Unauthorized', message: error.message });

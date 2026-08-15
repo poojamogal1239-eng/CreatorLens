@@ -9,7 +9,7 @@
         "options": {}
       },
       "id": "1d8df5db-8f83-4a1d-b8d9-6c3e7f41cf6b",
-      "name": "Webhook Trigger",
+      "name": "Webhook",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 1,
       "position": [
@@ -19,22 +19,12 @@
     },
     {
       "parameters": {
-        "operation": "update",
-        "table": "ai_jobs",
-        "id": "={{ $json.body.job_id }}",
-        "columns": [
-          "status",
-          "started_at"
-        ],
-        "values": {
-          "status": "Processing",
-          "started_at": "={{ new Date().toISOString() }}"
-        }
+        "jsCode": "const body = $json.body || {};\nreturn [{\n  creator_id: body.creator_id,\n  job_id: body.job_id,\n  trace_id: body.trace_id,\n  creator_code: body.creator_code || null\n}];"
       },
-      "id": "1d8df5db-8f83-4a1d-b8d9-6c3e7f41cf6a",
-      "name": "Update AI Job - Processing",
-      "type": "n8n-nodes-base.supabase",
-      "typeVersion": 1,
+      "id": "2d8df5db-8f83-4a1d-b8d9-6c3e7f41cf6b",
+      "name": "Code in JavaScript",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
       "position": [
         280,
         300
@@ -43,418 +33,374 @@
     {
       "parameters": {
         "operation": "get",
-        "table": "creators",
-        "id": "={{ $('Webhook Trigger').first().json.body.creator_id }}"
-      },
-      "id": "2d8df5db-8f83-4a1d-b8d9-6c3e7f41cf6c",
-      "name": "Fetch Creator Profile",
-      "type": "n8n-nodes-base.supabase",
-      "typeVersion": 1,
-      "position": [
-        450,
-        300
-      ]
-    },
-    {
-      "parameters": {
-        "model": "gemini-1.5-pro",
-        "prompt": "=Analyze the following creator profile data:\nFull Name: {{ $json.full_name }}\nBio: {{ $json.bio }}\nCategories: {{ $json.categories.join(', ') }}\nLanguages: {{ $json.languages.join(', ') }}\nRegions: {{ $json.regions.join(', ') }}\n\nGenerate a structured JSON output with the following fields:\n1. profile_summary (2-3 sentences explaining their niche and market value)\n2. strengths (array of 3 strings of their core engagement strengths)\n3. weaknesses (array of 2 strings highlighting growth channels)\n4. missing_information (array of missing pieces from their profile)\n5. profile_completeness (integer 0-100 indicating profile depth)\n6. confidence_score (decimal 0.0-1.0 representing analysis confidence)"
-      },
-      "id": "3d8df5db-8f83-4a1d-b8d9-6c3e7f41cf6d",
-      "name": "Gemini - Profile Analysis (WF-01)",
-      "type": "n8n-nodes-base.googleGemini",
-      "typeVersion": 1,
-      "position": [
-        630,
-        300
-      ]
-    },
-    {
-      "parameters": {
-        "operation": "upsert",
-        "table": "creator_ai_analysis",
-        "columns": [
-          "creator_id",
-          "profile_summary",
-          "profile_completeness",
-          "strengths",
-          "weaknesses",
-          "missing_information",
-          "ai_version",
-          "workflow_version",
-          "confidence_score"
-        ],
-        "values": {
-          "creator_id": "={{ $('Webhook Trigger').item.json.body.creator_id }}",
-          "profile_summary": "={{ $json.profile_summary }}",
-          "profile_completeness": "={{ $json.profile_completeness }}",
-          "strengths": "={{ $json.strengths }}",
-          "weaknesses": "={{ $json.weaknesses }}",
-          "missing_information": "={{ $json.missing_information }}",
-          "ai_version": "Gemini-1.5-pro",
-          "workflow_version": "WF-v1.0",
-          "confidence_score": "={{ $json.confidence_score }}"
+        "tableId": "creators",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "id",
+              "operator": "equal",
+              "keyValue": "={{ $('Code in JavaScript').first().json.creator_id }}"
+            }
+          ]
         }
       },
-      "id": "4d8df5db-8f83-4a1d-b8d9-6c3e7f41cf6e",
-      "name": "Save AI Analysis",
+      "id": "3d8df5db-8f83-4a1d-b8d9-6c3e7f41cf6b",
+      "name": "Fetch creator profile",
       "type": "n8n-nodes-base.supabase",
       "typeVersion": 1,
       "position": [
-        810,
+        460,
+        300
+      ],
+      "credentials": {
+        "supabaseApi": {
+          "id": "supabaseApi",
+          "name": "Supabase"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "key",
+              "value": "={{ $('Webhook').first().json.body.gemini_api_key || 'YOUR_API_KEY_FALLBACK' }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyContentType": "json",
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"contents\": [\n    {\n      \"parts\": [\n        {\n          \"text\": \"Analyze this creator profile:\\nName: {{ $('Fetch creator profile').first().json.full_name }}\\nBio: {{ $('Fetch creator profile').first().json.bio }}\\nCategories: {{ ($('Fetch creator profile').first().json.categories || []).join(', ') }}\\nLanguages: {{ ($('Fetch creator profile').first().json.languages || []).join(', ') }}\\nRegions: {{ ($('Fetch creator profile').first().json.regions || []).join(', ') }}\\nFollowers: {{ $('Fetch creator profile').first().json.followers_count }}\\nAverage Views: {{ $('Fetch creator profile').first().json.average_views }}\\nEngagement Rate: {{ $('Fetch creator profile').first().json.engagement_rate }}%\\n\\nYou MUST return strict JSON only. Do not include markdown code block formatting backticks (like ```json). The output must match this JSON schema:\\n{\\n  \\\"profile_summary\\\": \\\"Provide a summary of their profile...\\\",\\n  \\\"profile_completeness\\\": 85,\\n  \\\"strengths\\\": [\\\"strength1\\\", \\\"strength2\\\"],\\n  \\\"weaknesses\\\": [\\\"weakness1\\\", \\\"weakness2\\\"],\\n  \\\"missing_information\\\": [\\\"missing1\\\"],\\n  \\\"intelligence_score\\\": 85,\\n  \\\"audience_trust\\\": 80,\\n  \\\"engagement_rate_score\\\": 75,\\n  \\\"regional_influence\\\": 90,\\n  \\\"content_consistency\\\": 85,\\n  \\\"brand_readiness\\\": 80,\\n  \\\"ai_explanation\\\": \\\"Provide a detailed explanation of their score...\\\"\\n}\"\n        }\n      ]\n    }\n  ]\n}",
+        "options": {}
+      },
+      "id": "4d8df5db-8f83-4a1d-b8d9-6c3e7f41cf6b",
+      "name": "HTTP Request",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        640,
         300
       ]
     },
     {
       "parameters": {
-        "jsCode": "const creator = $('Fetch Creator Profile').first().json;\nconst analysis = $('Gemini - Profile Analysis (WF-01)').first().json;\n\n// Calculate metrics dynamically\nconst baseEngagement = creator.engagement_rate || 5.0;\nconst trust = Math.min(100, Math.round(75 + baseEngagement * 2));\nconst engagement = Math.min(100, Math.round(60 + baseEngagement * 4));\nconst regional = creator.regions.includes('Pune') || creator.regions.includes('Indore') || creator.languages.includes('Marathi') || creator.languages.includes('Bundeli') || creator.languages.includes('Telugu') ? 92 : 75;\nconst consistency = Math.min(100, Math.round(70 + Math.random() * 20));\nconst readiness = Math.min(100, Math.round(80 + (creator.pricing_min ? 10 : 0)));\nconst completeness = analysis.profile_completeness || 85;\n\nconst finalScore = Math.round(\n  trust * 0.25 +\n  engagement * 0.20 +\n  regional * 0.20 +\n  consistency * 0.15 +\n  readiness * 0.10 +\n  completeness * 0.10\n);\n\nreturn [{\n  creator_id: creator.id,\n  intelligence_score: finalScore,\n  audience_trust: trust,\n  engagement_rate_score: engagement,\n  regional_influence: regional,\n  content_consistency: consistency,\n  brand_readiness: readiness\n}];"
+        "jsCode": "const responseText = $('HTTP Request').first().json.candidates[0].content.parts[0].text;\nconst jsonMatch = responseText.match(/```(?:json)?\\s*([\\s\\S]*?)\\s*```/) || [null, responseText];\nconst jsonString = jsonMatch[1].trim();\nconst parsed = JSON.parse(jsonString);\n\nreturn [{ \n  creator_id: $('Code in JavaScript').first().json.creator_id,\n  profile_summary: parsed.profile_summary || 'Enriched Profile',\n  profile_completeness: parseInt(parsed.profile_completeness) || 80,\n  strengths: Array.isArray(parsed.strengths) ? parsed.strengths : [],\n  weaknesses: Array.isArray(parsed.weaknesses) ? parsed.weaknesses : [],\n  missing_information: Array.isArray(parsed.missing_information) ? parsed.missing_information : [],\n  intelligence_score: parseInt(parsed.intelligence_score) || 75,\n  audience_trust: parseInt(parsed.audience_trust) || 75,\n  engagement_rate_score: parseInt(parsed.engagement_rate_score) || 75,\n  regional_influence: parseInt(parsed.regional_influence) || 75,\n  content_consistency: parseInt(parsed.content_consistency) || 75,\n  brand_readiness: parseInt(parsed.brand_readiness) || 75,\n  ai_explanation: parsed.ai_explanation || 'Scores computed using Gemini.'\n}];"
       },
-      "id": "5d8df5db-8f83-4a1d-b8d9-6c3e7f41cf6f",
-      "name": "JS - Score Engine (WF-02)",
+      "id": "5d8df5db-8f83-4a1d-b8d9-6c3e7f41cf6b",
+      "name": "Parse Gemini Response",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        990,
-        300
+        280,
+        480
       ]
     },
     {
       "parameters": {
-        "model": "gemini-1.5-pro",
-        "prompt": "=Write a 2-sentence explanation of why this creator received a Creator Intelligence Score of {{ $json.intelligence_score }}/100 based on their metrics:\nAudience Trust Score: {{ $json.audience_trust }}\nEngagement Rate Score: {{ $json.engagement_rate_score }}\nRegional Influence: {{ $json.regional_influence }}\nContent Consistency: {{ $json.content_consistency }}\nBrand Readiness: {{ $json.brand_readiness }}\n"
-      },
-      "id": "6d8df5db-8f83-4a1d-b8d9-6c3e7f41cf7a",
-      "name": "Gemini - AI Explanation",
-      "type": "n8n-nodes-base.googleGemini",
-      "typeVersion": 1,
-      "position": [
-        1170,
-        300
-      ]
-    },
-    {
-      "parameters": {
-        "operation": "upsert",
-        "table": "creator_scores",
-        "columns": [
-          "creator_id",
-          "intelligence_score",
-          "audience_trust",
-          "engagement_rate_score",
-          "regional_influence",
-          "content_consistency",
-          "brand_readiness",
-          "ai_explanation"
-        ],
-        "values": {
-          "creator_id": "={{ $('JS - Score Engine (WF-02)').item.json.creator_id }}",
-          "intelligence_score": "={{ $('JS - Score Engine (WF-02)').item.json.intelligence_score }}",
-          "audience_trust": "={{ $('JS - Score Engine (WF-02)').item.json.audience_trust }}",
-          "engagement_rate_score": "={{ $('JS - Score Engine (WF-02)').item.json.engagement_rate_score }}",
-          "regional_influence": "={{ $('JS - Score Engine (WF-02)').item.json.regional_influence }}",
-          "content_consistency": "={{ $('JS - Score Engine (WF-02)').item.json.content_consistency }}",
-          "brand_readiness": "={{ $('JS - Score Engine (WF-02)').item.json.brand_readiness }}",
-          "ai_explanation": "={{ $json.text }}"
+        "operation": "create",
+        "tableId": "creator_ai_analysis",
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "creator_id",
+              "fieldValue": "={{ $json.creator_id }}"
+            },
+            {
+              "fieldId": "profile_summary",
+              "fieldValue": "={{ $json.profile_summary }}"
+            },
+            {
+              "fieldId": "profile_completeness",
+              "fieldValue": "={{ $json.profile_completeness }}"
+            },
+            {
+              "fieldId": "strengths",
+              "fieldValue": "={{ $json.strengths }}"
+            },
+            {
+              "fieldId": "weaknesses",
+              "fieldValue": "={{ $json.weaknesses }}"
+            },
+            {
+              "fieldId": "missing_information",
+              "fieldValue": "={{ $json.missing_information }}"
+            }
+          ]
         }
       },
-      "id": "7d8df5db-8f83-4a1d-b8d9-6c3e7f41cf7b",
-      "name": "Save Intelligence Scores",
+      "id": "6d8df5db-8f83-4a1d-b8d9-6c3e7f41cf6b",
+      "name": "Create a row",
       "type": "n8n-nodes-base.supabase",
       "typeVersion": 1,
       "position": [
-        1350,
-        300
-      ]
+        460,
+        480
+      ],
+      "credentials": {
+        "supabaseApi": {
+          "id": "supabaseApi",
+          "name": "Supabase"
+        }
+      }
     },
     {
       "parameters": {
-        "model": "gemini-1.5-pro",
-        "prompt": "=Generate 3 growth suggestions (as a JSON array of objects, each containing fields: suggestion_text, impact_level ['high','medium','low'], expected_improvement [integer score points]) to help this creator increase their scores.\nWeaknesses: {{ $('Gemini - Profile Analysis (WF-01)').first().json.weaknesses.join(', ') }}\nScore Explanation: {{ $('Gemini - AI Explanation').first().json.text }}"
-      },
-      "id": "8d8df5db-8f83-4a1d-b8d9-6c3e7f41cf7c",
-      "name": "Gemini - growth suggestions (WF-03)",
-      "type": "n8n-nodes-base.googleGemini",
-      "typeVersion": 1,
-      "position": [
-        1530,
-        300
-      ]
-    },
-    {
-      "parameters": {
-        "jsCode": "const suggestions = JSON.parse($('Gemini - growth suggestions (WF-03)').first().json.text);\nconst creatorId = $('Webhook Trigger').first().json.body.creator_id;\n\nreturn suggestions.map(s => ({\n  creator_id: creatorId,\n  suggestion_text: s.suggestion_text,\n  impact_level: s.impact_level,\n  expected_improvement: s.expected_improvement\n}));"
-      },
-      "id": "9d8df5db-8f83-4a1d-b8d9-6c3e7f41cf7d",
-      "name": "JS - Format suggestions",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [
-        1710,
-        300
-      ]
-    },
-    {
-      "parameters": {
-        "operation": "insert",
-        "table": "creator_ai_suggestions",
-        "columns": [
-          "creator_id",
-          "suggestion_text",
-          "impact_level",
-          "expected_improvement"
-        ],
-        "values": {
-          "creator_id": "={{ $json.creator_id }}",
-          "suggestion_text": "={{ $json.suggestion_text }}",
-          "impact_level": "={{ $json.impact_level }}",
-          "expected_improvement": "={{ $json.expected_improvement }}"
+        "operation": "create",
+        "tableId": "creator_scores",
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "creator_id",
+              "fieldValue": "={{ $('Parse Gemini Response').first().json.creator_id }}"
+            },
+            {
+              "fieldId": "intelligence_score",
+              "fieldValue": "={{ $('Parse Gemini Response').first().json.intelligence_score }}"
+            },
+            {
+              "fieldId": "audience_trust",
+              "fieldValue": "={{ $('Parse Gemini Response').first().json.audience_trust }}"
+            },
+            {
+              "fieldId": "engagement_rate_score",
+              "fieldValue": "={{ $('Parse Gemini Response').first().json.engagement_rate_score }}"
+            },
+            {
+              "fieldId": "regional_influence",
+              "fieldValue": "={{ $('Parse Gemini Response').first().json.regional_influence }}"
+            },
+            {
+              "fieldId": "content_consistency",
+              "fieldValue": "={{ $('Parse Gemini Response').first().json.content_consistency }}"
+            },
+            {
+              "fieldId": "brand_readiness",
+              "fieldValue": "={{ $('Parse Gemini Response').first().json.brand_readiness }}"
+            },
+            {
+              "fieldId": "ai_explanation",
+              "fieldValue": "={{ $('Parse Gemini Response').first().json.ai_explanation }}"
+            }
+          ]
         }
       },
-      "id": "ad8df5db-8f83-4a1d-b8d9-6c3e7f41cf7e",
-      "name": "Save suggestions",
+      "id": "7d8df5db-8f83-4a1d-b8d9-6c3e7f41cf6b",
+      "name": "Update a row",
       "type": "n8n-nodes-base.supabase",
       "typeVersion": 1,
       "position": [
-        1890,
-        300
-      ]
+        640,
+        480
+      ],
+      "credentials": {
+        "supabaseApi": {
+          "id": "supabaseApi",
+          "name": "Supabase"
+        }
+      }
     },
     {
       "parameters": {
         "operation": "update",
-        "table": "creators",
-        "id": "={{ $('Webhook Trigger').first().json.body.creator_id }}",
-        "columns": [
-          "ai_status"
-        ],
-        "values": {
-          "ai_status": "Completed"
+        "tableId": "creators",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "id",
+              "operator": "equal",
+              "keyValue": "={{ $('Webhook').first().json.body.creator_id }}"
+            }
+          ]
+        },
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "ai_status",
+              "fieldValue": "Completed"
+            }
+          ]
         }
       },
-      "id": "bd8df5db-8f83-4a1d-b8d9-6c3e7f41cf7f",
-      "name": "Update Profile AI Status",
+      "id": "8d8df5db-8f83-4a1d-b8d9-6c3e7f41cf6b",
+      "name": "Update a row1",
       "type": "n8n-nodes-base.supabase",
       "typeVersion": 1,
       "position": [
-        2070,
-        300
-      ]
+        820,
+        480
+      ],
+      "credentials": {
+        "supabaseApi": {
+          "id": "supabaseApi",
+          "name": "Supabase"
+        }
+      }
     },
     {
       "parameters": {
         "operation": "update",
-        "table": "ai_jobs",
-        "id": "={{ $('Webhook Trigger').first().json.body.job_id }}",
-        "columns": [
-          "status",
-          "completed_at"
-        ],
-        "values": {
-          "status": "Completed",
-          "completed_at": "={{ new Date().toISOString() }}"
+        "tableId": "ai_jobs",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "id",
+              "operator": "equal",
+              "keyValue": "={{ $('Webhook').first().json.body.job_id }}"
+            }
+          ]
+        },
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "status",
+              "fieldValue": "Completed"
+            },
+            {
+              "fieldId": "completed_at",
+              "fieldValue": "={{ new Date().toISOString() }}"
+            }
+          ]
         }
       },
-      "id": "cd8df5db-8f83-4a1d-b8d9-6c3e7f41cf8b",
-      "name": "Update AI Job - Completed",
+      "id": "cd8df5db-8f83-4a1d-b8d9-6c3e7f41cf7c",
+      "name": "Update Job Status - Completed",
       "type": "n8n-nodes-base.supabase",
       "typeVersion": 1,
       "position": [
-        2250,
-        300
-      ]
-    },
-    {
-      "parameters": {
-        "operation": "update",
-        "table": "workflow_logs",
-        "id": "={{ $('Webhook Trigger').first().json.body.trace_id }}",
-        "columns": [
-          "status",
-          "completed_at",
-          "execution_time_ms",
-          "output_payload"
-        ],
-        "values": {
-          "status": "Completed",
-          "completed_at": "={{ new Date().toISOString() }}",
-          "execution_time_ms": "={{ Date.now() - new Date($('Webhook Trigger').first().json.timestamp).getTime() }}",
-          "output_payload": "={{ JSON.stringify({ success: true, ai_model: 'Gemini-1.5-pro' }) }}"
+        1000,
+        480
+      ],
+      "credentials": {
+        "supabaseApi": {
+          "id": "supabaseApi",
+          "name": "Supabase"
         }
-      },
-      "id": "cd8df5db-8f83-4a1d-b8d9-6c3e7f41cf8a",
-      "name": "Update Workflow Log",
-      "type": "n8n-nodes-base.supabase",
-      "typeVersion": 1,
-      "position": [
-        2430,
-        300
-      ]
+      }
     },
     {
       "parameters": {
         "respondWith": "json",
-        "responseBody": "{\n  \"success\": true,\n  \"message\": \"Creator profile successfully analyzed, scored, and suggestions generated.\",\n  \"creator_id\": \"{{ $('Webhook Trigger').first().json.body.creator_id }}\",\n  \"job_id\": \"{{ $('Webhook Trigger').first().json.body.job_id }}\",\n  \"trace_id\": \"{{ $('Webhook Trigger').first().json.body.trace_id }}\"\n}",
+        "responseBody": "{\n  \"success\": true,\n  \"message\": \"Creator profile successfully enriched.\",\n  \"creator_id\": \"{{ $('Webhook').first().json.body.creator_id }}\",\n  \"job_id\": \"{{ $('Webhook').first().json.body.job_id }}\"\n}",
         "options": {}
       },
-      "id": "dd8df5db-8f83-4a1d-b8d9-6c3e7f41cf8b",
-      "name": "Respond to Webhook",
+      "id": "dd8df5db-8f83-4a1d-b8d9-6c3e7f41cf7d",
+      "name": "Respond - Success",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1,
       "position": [
-        2610,
-        300
+        1180,
+        480
       ]
     }
   ],
   "connections": {
-    "Webhook Trigger": {
+    "Webhook": {
       "main": [
         [
           {
-            "node": "Update AI Job - Processing",
+            "node": "Code in JavaScript",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Update AI Job - Processing": {
+    "Code in JavaScript": {
       "main": [
         [
           {
-            "node": "Fetch Creator Profile",
+            "node": "Fetch creator profile",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Fetch Creator Profile": {
+    "Fetch creator profile": {
       "main": [
         [
           {
-            "node": "Gemini - Profile Analysis (WF-01)",
+            "node": "HTTP Request",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Gemini - Profile Analysis (WF-01)": {
+    "HTTP Request": {
       "main": [
         [
           {
-            "node": "Save AI Analysis",
+            "node": "Parse Gemini Response",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Save AI Analysis": {
+    "Parse Gemini Response": {
       "main": [
         [
           {
-            "node": "JS - Score Engine (WF-02)",
+            "node": "Create a row",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "JS - Score Engine (WF-02)": {
+    "Create a row": {
       "main": [
         [
           {
-            "node": "Gemini - AI Explanation",
+            "node": "Update a row",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Gemini - AI Explanation": {
+    "Update a row": {
       "main": [
         [
           {
-            "node": "Save Intelligence Scores",
+            "node": "Update a row1",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Save Intelligence Scores": {
+    "Update a row1": {
       "main": [
         [
           {
-            "node": "Gemini - growth suggestions (WF-03)",
+            "node": "Update Job Status - Completed",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Gemini - growth suggestions (WF-03)": {
+    "Update Job Status - Completed": {
       "main": [
         [
           {
-            "node": "JS - Format suggestions",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "JS - Format suggestions": {
-      "main": [
-        [
-          {
-            "node": "Save suggestions",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Save suggestions": {
-      "main": [
-        [
-          {
-            "node": "Update Profile AI Status",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Update Profile AI Status": {
-      "main": [
-        [
-          {
-            "node": "Update AI Job - Completed",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Update AI Job - Completed": {
-      "main": [
-        [
-          {
-            "node": "Update Workflow Log",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Update Workflow Log": {
-      "main": [
-        [
-          {
-            "node": "Respond to Webhook",
+            "node": "Respond - Success",
             "type": "main",
             "index": 0
           }
@@ -464,6 +410,6 @@
   },
   "settings": {},
   "meta": {
-    "instanceId": "creatorlens-instance"
+    "instanceId": "6c4ba7bd9cc2fa6df405d4b5df5bead2ee2e5bfba9c83693e506df1db2c4516a"
   }
 }

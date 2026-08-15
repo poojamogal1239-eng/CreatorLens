@@ -87,8 +87,19 @@ window.UI = {
     const valPoints = [];
     axes.forEach((axis, i) => {
       const angle = i * angleStep - Math.PI / 2;
-      const score = scores[axis.key] || 0;
-      const r = rMax * (score / 100);
+      let score = scores[axis.key];
+      if (score === undefined) {
+        if (axis.key === "engagement_rate") {
+          score = scores.engagement_rate_score;
+        }
+      }
+      if (score === undefined || score === null) {
+        score = -1;
+      }
+      
+      const isInsufficient = score < 0;
+      const displayScore = isInsufficient ? 0 : score;
+      const r = rMax * (displayScore / 100);
       const x = cx + r * Math.cos(angle);
       const y = cy + r * Math.sin(angle);
       valPoints.push(`${x},${y}`);
@@ -107,8 +118,19 @@ window.UI = {
     // Draw dots and value labels
     axes.forEach((axis, i) => {
       const angle = i * angleStep - Math.PI / 2;
-      const score = scores[axis.key] || 0;
-      const r = rMax * (score / 100);
+      let score = scores[axis.key];
+      if (score === undefined) {
+        if (axis.key === "engagement_rate") {
+          score = scores.engagement_rate_score;
+        }
+      }
+      if (score === undefined || score === null) {
+        score = -1;
+      }
+      
+      const isInsufficient = score < 0;
+      const displayScore = isInsufficient ? 0 : score;
+      const r = rMax * (displayScore / 100);
       const x = cx + r * Math.cos(angle);
       const y = cy + r * Math.sin(angle);
       
@@ -118,7 +140,7 @@ window.UI = {
       circle.setAttribute("cy", y);
       circle.setAttribute("r", "4");
       circle.setAttribute("class", "radar-dot");
-      circle.setAttribute("fill", "#00D4FF");
+      circle.setAttribute("fill", isInsufficient ? "#ff6b6b" : "#00D4FF");
       circle.setAttribute("stroke", "#fff");
       circle.setAttribute("stroke-width", "1.5");
       svg.appendChild(circle);
@@ -129,11 +151,11 @@ window.UI = {
       const valText = document.createElementNS("http://www.w3.org/2000/svg", "text");
       valText.setAttribute("x", xValText);
       valText.setAttribute("y", yValText);
-      valText.setAttribute("fill", "#fff");
+      valText.setAttribute("fill", isInsufficient ? "#ff6b6b" : "#fff");
       valText.setAttribute("font-size", "10px");
       valText.setAttribute("font-weight", "600");
       valText.setAttribute("text-anchor", "middle");
-      valText.textContent = score;
+      valText.textContent = isInsufficient ? "N/A" : score;
       svg.appendChild(valText);
     });
     

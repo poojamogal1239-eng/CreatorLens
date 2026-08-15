@@ -17,7 +17,8 @@ router.get('/profile/:id', async (req, res, next) => {
     }
 
     if (data.creator_ai_analysis) {
-      Object.assign(data, data.creator_ai_analysis);
+      const { id: analysisId, created_at: analysisCreatedAt, updated_at: analysisUpdatedAt, ...analysisFields } = data.creator_ai_analysis;
+      Object.assign(data, analysisFields);
       delete data.creator_ai_analysis;
     }
 
@@ -29,39 +30,106 @@ router.get('/profile/:id', async (req, res, next) => {
 
 // POST /api/creators/profile
 router.post('/profile', async (req, res, next) => {
-  const { id, full_name, bio, categories, languages, regions, pricing_min, pricing_premium, followers_count, average_views, engagement_rate } = req.body;
+  const { 
+    id, 
+    full_name, 
+    avatar_url,
+    bio, 
+    categories, 
+    languages, 
+    regions, 
+    pricing_min, 
+    pricing_premium, 
+    followers_count, 
+    average_views, 
+    engagement_rate,
+    city,
+    state,
+    social_links,
+    audience_metadata,
+    collab_metadata
+  } = req.body;
   
   if (!id) {
     return res.status(400).json({ error: 'Bad Request', message: 'Creator ID is required to save profile.' });
   }
 
-  const profileData = {
-    full_name,
-    bio,
-    categories: categories || [],
-    languages: languages || [],
-    regions: regions || [],
-    pricing_min: pricing_min || 0,
-    pricing_premium: pricing_premium || 0,
-    followers_count: followers_count || 0,
-    average_views: average_views || 0,
-    engagement_rate: engagement_rate || 0,
-    ai_status: 'Pending' // Reset to Pending on profile edit to trigger re-analysis if needed
-  };
-
   try {
-    const { data, error } = await supabase
+    // 1. Fetch existing profile to merge and avoid wiping other fields
+    const { data: existingProfile, error: fetchError } = await supabase
       .from('creators')
-      .update(profileData)
+      .select('*')
+      .eq('id', id)
+      .single();
+
+    if (fetchError && fetchError.code !== 'PGRST116') {
+      return res.status(500).json({ error: 'Database Fetch Error', message: fetchError.message });
+    }
+
+    const currentProfile = existingProfile || {};
+
+    // 2. Merge incoming payload fields
+    const merged = {
+      full_name: full_name !== undefined ? full_name : currentProfile.full_name,
+      avatar_url: avatar_url !== undefined ? avatar_url : currentProfile.avatar_url,
+      bio: bio !== undefined ? bio : currentProfile.bio,
+      categories: categories !== undefined ? categories : (currentProfile.categories || []),
+      languages: languages !== undefined ? languages : (currentProfile.languages || []),
+      regions: regions !== undefined ? regions : (currentProfile.regions || []),
+      pricing_min: pricing_min !== undefined ? pricing_min : (currentProfile.pricing_min || 0),
+      pricing_premium: pricing_premium !== undefined ? pricing_premium : (currentProfile.pricing_premium || 0),
+      followers_count: followers_count !== undefined ? followers_count : (currentProfile.followers_count || 0),
+      average_views: average_views !== undefined ? average_views : (currentProfile.average_views || 0),
+      engagement_rate: engagement_rate !== undefined ? engagement_rate : (currentProfile.engagement_rate || 0),
+      city: city !== undefined ? city : currentProfile.city,
+      state: state !== undefined ? state : currentProfile.state,
+      social_links: social_links !== undefined ? social_links : (currentProfile.social_links || {}),
+      audience_metadata: audience_metadata !== undefined ? audience_metadata : (currentProfile.audience_metadata || {}),
+      collab_metadata: collab_metadata !== undefined ? collab_metadata : (currentProfile.collab_metadata || {})
+    };
+
+    // 3. Compute readiness based on merged profile state
+    const hasSocialHandle = merged.social_links && (
+      (merged.social_links.instagram && merged.social_links.instagram.handle && merged.social_links.instagram.handle.trim()) ||
+      (merged.social_links.youtube && merged.social_links.youtube.handle && merged.social_links.youtube.handle.trim())
+    );
+
+    const hasAudience = merged.audience_metadata && 
+      merged.audience_metadata.location && merged.audience_metadata.location.trim() &&
+      merged.audience_metadata.posting_frequency && merged.audience_metadata.posting_frequency.trim();
+
+    const hasCollab = merged.collab_metadata && 
+      merged.collab_metadata.target_brands && merged.collab_metadata.target_brands.length > 0 && 
+      merged.collab_metadata.previous_experience !== undefined;
+
+    const isReady = !!(
+      merged.full_name && merged.full_name.trim() &&
+      merged.avatar_url && merged.avatar_url.trim() &&
+      merged.city && merged.city.trim() &&
+      merged.state && merged.state.trim() &&
+      merged.languages && merged.languages.length > 0 &&
+      merged.categories && merged.categories.length > 0 &&
+      merged.bio && merged.bio.trim() &&
+      hasSocialHandle &&
+      hasAudience &&
+      hasCollab
+    );
+
+    merged.profile_status = isReady ? 'Ready' : 'Incomplete';
+
+    // 4. Perform update
+    const { data: updatedProfile, error: updateError } = await supabase
+      .from('creators')
+      .update(merged)
       .eq('id', id)
       .select()
       .single();
 
-    if (error) {
-      return res.status(500).json({ error: 'Database Error', message: error.message });
+    if (updateError) {
+      return res.status(500).json({ error: 'Database Update Error', message: updateError.message });
     }
 
-    res.json({ success: true, profile: data });
+    res.json({ success: true, profile: updatedProfile });
   } catch (err) {
     next(err);
   }
@@ -76,7 +144,7 @@ router.get('/dashboard/:id', async (req, res, next) => {
       supabase.from('creators').select('*, creator_ai_analysis(*)').eq('id', id).single(),
       supabase.from('creator_scores').select('*').eq('creator_id', id).single(),
       supabase.from('creator_ai_suggestions').select('*').eq('creator_id', id),
-      supabase.from('collaborations').select('*, campaigns(*), brands(*)').eq('creator_id', id)
+      supabase.from('collaborations').select('*, campaigns(*)').eq('creator_id', id)
     ]);
 
     // Handle profile query failure (mandatory segment)
@@ -86,16 +154,57 @@ router.get('/dashboard/:id', async (req, res, next) => {
 
     // Flat merge creator_ai_analysis properties if present
     if (profileRes.data && profileRes.data.creator_ai_analysis) {
-      Object.assign(profileRes.data, profileRes.data.creator_ai_analysis);
+      const { id: analysisId, created_at: analysisCreatedAt, updated_at: analysisUpdatedAt, ...analysisFields } = profileRes.data.creator_ai_analysis;
+      Object.assign(profileRes.data, analysisFields);
       delete profileRes.data.creator_ai_analysis;
     }
+
+    let suggestions = suggestionsRes.data || [];
+    if (suggestions.length === 0 && profileRes.data) {
+      const weaknesses = profileRes.data.weaknesses || [];
+      const missing = profileRes.data.missing_information || [];
+      
+      weaknesses.forEach((w, index) => {
+        suggestions.push({
+          id: `weakness-${index}`,
+          creator_id: id,
+          suggestion_text: `Address profile weakness: ${w}`,
+          impact_level: 'medium',
+          expected_improvement: 5
+        });
+      });
+      
+      missing.forEach((m, index) => {
+        suggestions.push({
+          id: `missing-${index}`,
+          creator_id: id,
+          suggestion_text: `Add missing details: ${m}`,
+          impact_level: 'high',
+          expected_improvement: 10
+        });
+      });
+    }
+
+    // Fetch brand profiles to map them manually (due to collaborations -> brands PostgREST join schema limits)
+    const { data: brandsData } = await supabase.from('brands').select('*');
+    const brandMap = {};
+    if (brandsData) {
+      brandsData.forEach(b => {
+        brandMap[b.id] = b;
+      });
+    }
+
+    const mappedCollabs = (collabsRes.data || []).map(collab => ({
+      ...collab,
+      brand: brandMap[collab.brand_id] || null
+    }));
 
     // Scores, suggestions, and collabs are optional segments (might be empty/null initially)
     const dashboardData = {
       profile: profileRes.data,
       scores: scoresRes.data || null,
-      suggestions: suggestionsRes.data || [],
-      requests: collabsRes.data || []
+      suggestions: suggestions,
+      requests: mappedCollabs
     };
 
     res.json(dashboardData);
@@ -120,22 +229,51 @@ router.post('/enrich', async (req, res, next) => {
   try {
     const trace_id = require('crypto').randomUUID();
 
-    // Fetch creator_code first
-    const { data: creatorData } = await supabase
+    // 1. Fetch profile first to validate mandatory profile data is complete
+    const { data: creatorData, error: profileErr } = await supabase
       .from('creators')
-      .select('creator_code')
+      .select('creator_code, profile_status, ai_status')
       .eq('id', creator_id)
       .single();
 
-    const creator_code = creatorData ? creatorData.creator_code : null;
+    if (profileErr || !creatorData) {
+      return res.status(404).json({ error: 'Profile Not Found', message: 'Creator profile must exist before enrichment.' });
+    }
 
-    // 1. Update creator status to Processing
+    if (creatorData.profile_status !== 'Ready') {
+      return res.status(400).json({ 
+        error: 'Incomplete Profile', 
+        message: 'All mandatory profile fields must be completed before generating a Creator Intelligence Score.' 
+      });
+    }
+
+    // 2. IDEMPOTENCY CHECK: Check if there is an active job already Processing/Pending
+    const { data: activeJobs } = await supabase
+      .from('ai_jobs')
+      .select('id, status')
+      .eq('creator_id', creator_id)
+      .eq('workflow_name', 'creator_profile_enrichment')
+      .in('status', ['Pending', 'Processing'])
+      .limit(1);
+
+    if (activeJobs && activeJobs.length > 0) {
+      console.log(`[Idempotency] Active job already running for creator ${creator_id}: ${activeJobs[0].id}`);
+      return res.json({
+        success: true,
+        message: 'AI Profile analysis is already in progress.',
+        data: { job_id: activeJobs[0].id }
+      });
+    }
+
+    const creator_code = creatorData.creator_code;
+
+    // 3. Update creator status to Processing
     await supabase
       .from('creators')
       .update({ ai_status: 'Processing' })
       .eq('id', creator_id);
 
-    // 2. Create AI Job record in ai_jobs table
+    // 4. Create AI Job record in ai_jobs table
     const { data: jobData, error: jobErr } = await supabase
       .from('ai_jobs')
       .insert([{
@@ -179,7 +317,8 @@ router.post('/enrich', async (req, res, next) => {
         creator_id,
         creator_code,
         workflow: 'creator_profile_enrichment',
-        trace_id
+        trace_id,
+        gemini_api_key: process.env.GEMINI_API_KEY
       })
     });
 

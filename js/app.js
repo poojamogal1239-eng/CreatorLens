@@ -1,5 +1,17 @@
 // CreatorLens Platform MVP Coordinator & State Controller
 
+const LOCATION_DATA = {
+  "Madhya Pradesh": ["Indore", "Bhopal", "Gwalior", "Jabalpur"],
+  "Maharashtra": ["Pune", "Mumbai", "Nagpur", "Thane"],
+  "Telangana": ["Hyderabad", "Warangal", "Nizamabad"],
+  "Andhra Pradesh": ["Visakhapatnam", "Vijayawada", "Guntur", "Nellore"],
+  "Delhi": ["New Delhi"],
+  "Karnataka": ["Bengaluru", "Mysore", "Hubli", "Mangalore"],
+  "Tamil Nadu": ["Chennai", "Coimbatore", "Madurai", "Trichy"],
+  "Uttar Pradesh": ["Noida", "Lucknow", "Kanpur", "Agra", "Varanasi"],
+  "West Bengal": ["Kolkata", "Howrah", "Darjeeling"]
+};
+
 window.App = {
   currentUser: null,
   activeSubview: "",
@@ -41,12 +53,35 @@ window.App = {
   },
 
   // Hash-based Router
-  handleRouting: function() {
+  handleRouting: async function() {
     const hash = window.location.hash || "#/";
-    const path = hash.substring(2); // remove #/
     
-    // Reset window/document scroll positions to top on layout transitions
-    window.scrollTo(0, 0);
+    // Close mobile sidebar if open on navigation
+    const sidebar = document.querySelector(".sidebar");
+    if (sidebar) sidebar.classList.remove("sidebar-open");
+
+    // Handle local section anchor jumps directly on landing page
+    if (!hash.startsWith("#/") && hash !== "#/") {
+      const anchorId = hash.substring(1);
+      document.getElementById("view-landing").style.display = "block";
+      document.getElementById("view-auth").style.display = "none";
+      document.getElementById("view-main").style.display = "none";
+      
+      // Initialize sandbox preview content for anchor entry
+      this.selectSandboxTag("Marathi");
+      
+      const targetEl = document.getElementById(anchorId);
+      if (targetEl) {
+        setTimeout(() => {
+          targetEl.scrollIntoView({ behavior: "smooth" });
+        }, 100);
+      }
+      return;
+    }
+
+    const path = hash.substring(2); // Remove '#/'
+    
+    // Non-anchor route transitions should reset viewport scrolls
     document.documentElement.scrollTop = 0;
     document.body.scrollTop = 0;
     
@@ -62,6 +97,26 @@ window.App = {
       document.getElementById("view-landing").style.display = "none";
       document.getElementById("view-auth").style.display = "flex";
       document.getElementById("view-main").style.display = "none";
+      
+      // Clear any pending background dashboard polling
+      if (this.dashboardPollInterval) {
+        clearInterval(this.dashboardPollInterval);
+        this.dashboardPollInterval = null;
+      }
+      this.activeSubview = null;
+
+      // Auto logout and reset forms to prevent cross-session leaks
+      this.currentUser = null;
+      localStorage.removeItem("cl_session_user");
+      
+      const emailInput = document.getElementById("auth-email");
+      if (emailInput) emailInput.value = "";
+      const passwordInput = document.getElementById("auth-password");
+      if (passwordInput) passwordInput.value = "";
+      const nameInput = document.getElementById("auth-name");
+      if (nameInput) nameInput.value = "";
+      const errBox = document.getElementById("auth-error-message");
+      if (errBox) errBox.style.display = "none";
       
       const isLogin = path === "login";
       this.setAuthTab(isLogin ? "login" : "register");
@@ -89,6 +144,51 @@ window.App = {
       window.location.hash = "#/";
       return;
     }
+
+    // Role-based route isolation constraints
+    const roleVal = this.currentUser.role;
+    if (roleVal === "creator") {
+      const allowed = ["creator-dashboard", "complete-profile", "creator-profile", "creator-intelligence", "creator-campaign-discovery", "creator-my-campaigns", "creator-profile-mgmt", "creator-earnings", "creator-assistant", "notifications", "creator-settings"];
+      if (!allowed.includes(path)) {
+        window.location.hash = "#/creator-dashboard";
+        return;
+      }
+    } else if (roleVal === "brand") {
+      const allowed = ["brand-dashboard", "brand-campaigns", "brand-ai-match", "brand-search", "brand-insights", "notifications", "brand-settings"];
+      if (!allowed.includes(path)) {
+        window.location.hash = "#/brand-dashboard";
+        return;
+      }
+    } else if (roleVal === "admin") {
+      const allowed = ["admin-dashboard", "admin-creators", "admin-brands", "admin-campaigns", "admin-collaborations"];
+      if (!allowed.includes(path)) {
+        window.location.hash = "#/admin-dashboard";
+        return;
+      }
+    }
+    
+    // Fetch user profile from Supabase/MockDB to check status gates
+    try {
+      const profile = await window.DB.getProfile(this.currentUser.id, this.currentUser.role);
+      if (this.currentUser.role === "creator" && profile) {
+        this.creatorProfileStatus = profile.profile_status || 'Incomplete';
+        this.creatorAiStatus = profile.ai_status || 'Not Started';
+        
+        const lockedPaths = ["creator-dashboard", "creator-intelligence", "creator-campaign-discovery", "creator-my-campaigns", "creator-earnings", "creator-assistant"];
+        if (lockedPaths.includes(path)) {
+          if (this.creatorProfileStatus !== 'Ready' || this.creatorAiStatus !== 'Completed') {
+            window.location.hash = "#/complete-profile";
+            this.showToast("Please complete your profile and generate your Creator Intelligence Score first!", "warning");
+            return;
+          }
+        }
+      } else {
+        this.creatorProfileStatus = 'Ready';
+        this.creatorAiStatus = 'Completed';
+      }
+    } catch (err) {
+      console.error("Failed to load user profile in router:", err);
+    }
     
     // Ensure dashboard layout is visible
     document.getElementById("view-landing").style.display = "none";
@@ -99,6 +199,17 @@ window.App = {
     document.getElementById("nav-user-name").textContent = this.currentUser.email.split("@")[0];
     document.getElementById("nav-user-role").textContent = this.currentUser.role;
     document.getElementById("nav-user-avatar").textContent = this.currentUser.email.charAt(0).toUpperCase();
+    
+    // Toggle header AI Assistant button visibility based on role
+    const assistantBtn = document.getElementById("top-nav-assistant-btn");
+    if (assistantBtn) {
+      if (this.currentUser.role === "brand") {
+        assistantBtn.style.display = "none";
+      } else {
+        assistantBtn.style.display = "flex";
+      }
+    }
+    
     this.renderNavigation();
     
     // Render the specific subview content
@@ -128,6 +239,30 @@ window.App = {
     }, 100);
   },
 
+  scrollToSection: function(sectionId) {
+    this.adminLog(`Scrolling to section: ${sectionId}`);
+    
+    // Ensure landing view is showing
+    document.getElementById("view-landing").style.display = "block";
+    document.getElementById("view-auth").style.display = "none";
+    document.getElementById("view-main").style.display = "none";
+    
+    if (window.location.hash !== "#/") {
+      history.pushState(null, null, "#/");
+    }
+    
+    if (sectionId === "view-landing") {
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    } else {
+      const targetEl = document.getElementById(sectionId);
+      if (targetEl) {
+        setTimeout(() => {
+          targetEl.scrollIntoView({ behavior: "smooth" });
+        }, 100);
+      }
+    }
+  },
+
   showMainLayout: function() {
     // Redirect to dashboard hash depending on role
     if (this.currentUser.role === "creator") {
@@ -151,9 +286,26 @@ window.App = {
     document.getElementById("tab-login").classList.toggle("active", isLogin);
     document.getElementById("tab-register").classList.toggle("active", !isLogin);
     
+    document.getElementById("reg-name-group").style.display = isLogin ? "none" : "block";
     document.getElementById("reg-role-group").style.display = isLogin ? "none" : "block";
-    document.getElementById("auth-submit-btn").textContent = isLogin ? "Login Account →" : "Create New Account →";
+    
+    const submitBtn = document.getElementById("auth-submit-btn");
+    if (submitBtn) {
+      submitBtn.disabled = false;
+      submitBtn.textContent = isLogin ? "Login Account →" : "Create New Account →";
+    }
+    
     document.getElementById("auth-form").dataset.mode = tab;
+    
+    // Reset OTP verification panels back to defaults
+    const mainPanel = document.getElementById("auth-main-panel");
+    if (mainPanel) mainPanel.style.display = "block";
+    const otpPanel = document.getElementById("auth-otp-verify-panel");
+    if (otpPanel) otpPanel.style.display = "none";
+    const otpInputGroup = document.getElementById("otp-input-group");
+    if (otpInputGroup) otpInputGroup.style.display = "none";
+    const pwdInputGroup = document.getElementById("password-input-group");
+    if (pwdInputGroup) pwdInputGroup.style.display = "block";
     
     // Reset password toggle and error message when switching tabs
     const errBox = document.getElementById("auth-error-message");
@@ -201,7 +353,8 @@ window.App = {
         this.currentUser = await window.DB.login(email, password);
       } else {
         const role = document.getElementById("auth-role").value;
-        this.currentUser = await window.DB.register(email, password, role);
+        const name = document.getElementById("auth-name") ? document.getElementById("auth-name").value : "";
+        this.currentUser = await window.DB.register(email, password, role, name);
       }
       
       localStorage.setItem("cl_session_user", JSON.stringify(this.currentUser));
@@ -286,10 +439,26 @@ window.App = {
   },
 
   handleLogout: function() {
+    if (this.dashboardPollInterval) {
+      clearInterval(this.dashboardPollInterval);
+      this.dashboardPollInterval = null;
+    }
+    this.activeSubview = null;
+    
     localStorage.removeItem("cl_session_user");
-    this.adminLog(`User ${this.currentUser.email} logged out.`);
+    if (this.currentUser) {
+      this.adminLog(`User ${this.currentUser.email} logged out.`);
+    }
     this.currentUser = null;
     this.showAuthLayout();
+  },
+
+  toggleSidebar: function(e) {
+    if (e) e.stopPropagation();
+    const sidebar = document.querySelector(".sidebar");
+    if (sidebar) {
+      sidebar.classList.toggle("sidebar-open");
+    }
   },
 
   toggleUserDropdown: function() {
@@ -300,9 +469,7 @@ window.App = {
   },
 
   toggleAiAssistant: function() {
-    this.showToast("AI Assistant activated. Ask anything or search recommendations!", "info");
-    const search = document.getElementById("global-ai-search");
-    if (search) search.focus();
+    this.switchSubview("creator-assistant");
   },
 
   togglePasswordVisibility: function() {
@@ -356,12 +523,14 @@ window.App = {
     let menuItems = [];
     if (role === "creator") {
       menuItems = [
-        { id: "creator-dashboard", label: "Dashboard", svg: icons.dashboard },
-        { id: "creator-intelligence", label: "Creator Intelligence", svg: icons.intelligence },
-        { id: "creator-campaign-discovery", label: "Campaign Marketplace", svg: icons.search },
-        { id: "creator-my-campaigns", label: "My Campaigns", svg: icons.campaigns },
+        { id: "creator-dashboard", label: "Overview", svg: icons.dashboard },
         { id: "creator-profile-mgmt", label: "My Profile", svg: icons.profile },
-        { id: "notifications", label: "Inbox Alerts", svg: icons.notifications },
+        { id: "creator-intelligence", label: "My Intelligence", svg: icons.intelligence },
+        { id: "creator-campaign-discovery", label: "Brand Opportunities", svg: icons.search },
+        { id: "creator-my-campaigns", label: "My Campaigns", svg: icons.campaigns },
+        { id: "creator-earnings", label: "My Earnings", svg: `<svg class="sidebar-icon" viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"></line><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>` },
+        { id: "creator-assistant", label: "AI Assistant", svg: `<svg class="sidebar-icon" viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>` },
+        { id: "notifications", label: "Messages & Alerts", svg: icons.notifications },
         { id: "creator-settings", label: "Settings", svg: icons.settings }
       ];
     } else if (role === "brand") {
@@ -376,17 +545,35 @@ window.App = {
       ];
     } else if (role === "admin") {
       menuItems = [
-        { id: "admin-dashboard", label: "Admin Panel", svg: icons.admin },
-        { id: "settings", label: "Settings", svg: icons.settings }
+        { id: "admin-dashboard", label: "Dashboard", svg: icons.dashboard },
+        { id: "admin-creators", label: "Creators", svg: icons.profile },
+        { id: "admin-brands", label: "Brands", svg: icons.profile },
+        { id: "admin-campaigns", label: "Campaigns", svg: icons.campaigns },
+        { id: "admin-collaborations", label: "Collaborations", svg: icons.intelligence }
       ];
     }
+    
+    const isLocked = (role === "creator" && (this.creatorProfileStatus !== "Ready" || this.creatorAiStatus !== "Completed"));
+    const lockedPaths = ["creator-dashboard", "creator-intelligence", "creator-campaign-discovery", "creator-my-campaigns", "creator-earnings", "creator-assistant"];
     
     menuItems.forEach(item => {
       const a = document.createElement("a");
       a.className = "menu-item";
       a.id = `nav-link-${item.id}`;
-      a.innerHTML = `<span style="display:inline-flex; align-items:center; justify-content:center; margin-right:8px; width:16px; height:16px;">${item.svg}</span> ${item.label}`;
-      a.onclick = () => this.switchSubview(item.id);
+      
+      if (isLocked && lockedPaths.includes(item.id)) {
+        a.className = "menu-item disabled";
+        a.style.opacity = "0.4";
+        a.style.cursor = "not-allowed";
+        a.innerHTML = `<span style="display:inline-flex; align-items:center; justify-content:center; margin-right:8px; width:16px; height:16px;">${item.svg}</span> ${item.label} <span style="font-size:10px; margin-left:auto; opacity:0.6;">🔒</span>`;
+        a.onclick = (e) => {
+          e.preventDefault();
+          this.showToast("Complete onboarding and generate your intelligence score to unlock this section!", "warning");
+        };
+      } else {
+        a.innerHTML = `<span style="display:inline-flex; align-items:center; justify-content:center; margin-right:8px; width:16px; height:16px;">${item.svg}</span> ${item.label}`;
+        a.onclick = () => this.switchSubview(item.id);
+      }
       menuContainer.appendChild(a);
     });
   },
@@ -398,6 +585,11 @@ window.App = {
 
   renderSubviewElements: function(subviewId) {
     this.activeSubview = subviewId;
+    
+    if (subviewId !== "creator-dashboard" && this.dashboardPollInterval) {
+      clearInterval(this.dashboardPollInterval);
+      this.dashboardPollInterval = null;
+    }
     
     // Toggle active link class
     document.querySelectorAll(".menu-item").forEach(el => {
@@ -421,9 +613,12 @@ window.App = {
       if (subviewId === "creator-dashboard") {
         path = "Portal / Dashboard";
         label = "Dashboard Overview";
+      } else if (subviewId === "complete-profile") {
+        path = "Portal / Onboarding";
+        label = "Complete Your Creator Profile";
       } else if (subviewId === "creator-profile") {
         path = "Portal / Onboarding";
-        label = "Creator Portal Onboarding";
+        label = "Complete Your Profile";
       } else if (subviewId === "creator-intelligence") {
         path = "Portal / Creator Intelligence";
         label = "Overall Intelligence & Score Vectors";
@@ -436,6 +631,12 @@ window.App = {
       } else if (subviewId === "creator-profile-mgmt") {
         path = "Portal / My Profile";
         label = "Creator Profile Details";
+      } else if (subviewId === "creator-earnings") {
+        path = "Portal / Earnings";
+        label = "Financial Breakdown & Campaign Payouts";
+      } else if (subviewId === "creator-assistant") {
+        path = "Portal / AI Assistant";
+        label = "CreatorLens Intelligence Q&A";
       } else if (subviewId === "notifications") {
         path = "Portal / Inbox Alerts";
         label = "Notifications & AI Alerts";
@@ -451,6 +652,21 @@ window.App = {
       } else if (subviewId === "brand-settings") {
         path = "Portal / Settings";
         label = "Brand Connection Preferences";
+      } else if (subviewId === "admin-dashboard") {
+        path = "Admin / Dashboard";
+        label = "System Ecosystem Overview";
+      } else if (subviewId === "admin-creators") {
+        path = "Admin / Creators";
+        label = "Platform Creators Registry";
+      } else if (subviewId === "admin-brands") {
+        path = "Admin / Brands";
+        label = "Brand Partners Registry";
+      } else if (subviewId === "admin-campaigns") {
+        path = "Admin / Campaigns";
+        label = "Global Campaigns Manager";
+      } else if (subviewId === "admin-collaborations") {
+        path = "Admin / Collaborations";
+        label = "Partnerships & Activity Logs";
       }
       
       breadcrumb.textContent = path;
@@ -470,6 +686,8 @@ window.App = {
       // Execute view-specific loaders
       if (subviewId === "creator-dashboard") {
         this.loadCreatorDashboard();
+      } else if (subviewId === "complete-profile") {
+        this.loadCompleteProfileGatekeeper();
       } else if (subviewId === "creator-profile") {
         this.initOnboardingWizard();
       } else if (subviewId === "creator-intelligence") {
@@ -480,6 +698,10 @@ window.App = {
         this.loadMyCampaigns();
       } else if (subviewId === "creator-profile-mgmt") {
         this.loadProfileMgmtDetails();
+      } else if (subviewId === "creator-earnings") {
+        this.loadCreatorEarnings();
+      } else if (subviewId === "creator-assistant") {
+        this.loadCreatorAssistant();
       } else if (subviewId === "creator-settings") {
         // Renders creator details locally
       } else if (subviewId === "notifications") {
@@ -498,8 +720,14 @@ window.App = {
         this.loadBrandSettings();
       } else if (subviewId === "admin-dashboard") {
         this.loadAdminDashboard();
-      } else if (subviewId === "settings") {
-        this.loadSettings();
+      } else if (subviewId === "admin-creators") {
+        this.loadAdminCreators();
+      } else if (subviewId === "admin-brands") {
+        this.loadAdminBrands();
+      } else if (subviewId === "admin-campaigns") {
+        this.loadAdminCampaigns();
+      } else if (subviewId === "admin-collaborations") {
+        this.loadAdminCollaborations();
       }
     }
   },
@@ -507,6 +735,7 @@ window.App = {
   // ==================== CREATOR SUB-VIEWS ====================
   loadCreatorDashboard: async function() {
     try {
+      if (!this.currentUser) return;
       const creator = await window.DB.getProfile(this.currentUser.id, "creator");
       if (!creator) return;
 
@@ -516,6 +745,24 @@ window.App = {
       document.getElementById("stat-followers").textContent = creator.followers_count.toLocaleString('en-IN');
       document.getElementById("stat-engagement").textContent = `${creator.engagement_rate}%`;
       document.getElementById("stat-views").textContent = creator.average_views.toLocaleString('en-IN');
+
+      // Clear or set polling depending on the AI status
+      if (creator.ai_status === 'Processing') {
+        if (!this.dashboardPollInterval) {
+          console.log("[SYS] Initiating background status polling for creator ID: " + creator.id);
+          this.dashboardPollInterval = setInterval(async () => {
+            if (this.activeSubview === 'creator-dashboard') {
+              await this.loadCreatorDashboard();
+            }
+          }, 3500);
+        }
+      } else {
+        if (this.dashboardPollInterval) {
+          console.log("[SYS] Profile enrichment complete. Stopping status polling.");
+          clearInterval(this.dashboardPollInterval);
+          this.dashboardPollInterval = null;
+        }
+      }
 
       const scores = await window.DB.getCreatorScores(creator.id);
       
@@ -536,19 +783,55 @@ window.App = {
         const circumference = 276.4; // 2 * PI * 44
         const offset = circumference - (scores.intelligence_score / 100) * circumference;
         setTimeout(() => {
-          scoreCircle.style.strokeDashoffset = offset;
+          if (scoreCircle) scoreCircle.style.strokeDashoffset = offset;
         }, 100);
-      } else {
+      } else if (creator.ai_status === 'Processing') {
         document.getElementById("radar-chart-container").innerHTML = `
+          <style>
+            @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+          </style>
           <div style="text-align: center; color: var(--color-text-gray); padding: 40px 0;">
-            <p>Score details not generated yet.</p>
-            <button class="btn btn-primary" style="margin-top: 12px;" onclick="App.switchSubview('creator-profile')">
-              Complete Profile to Calculate Score
-            </button>
+            <div style="margin: 0 auto 16px auto; width: 40px; height: 40px; border: 3px solid rgba(0, 242, 166, 0.1); border-top: 3px solid var(--color-primary-cyan); border-radius: 50%; animation: spin 1s linear infinite;"></div>
+            <h4 style="color: #fff; margin-bottom: 8px;">AI Analysis In Progress</h4>
+            <p style="font-size: 11px; max-width: 300px; margin: 0 auto; line-height: 1.5; color: var(--color-text-gray);">Gemini is analyzing your regional footprint and computing your CIS score vectors. This will update automatically in real-time...</p>
           </div>
         `;
-        document.getElementById("badge-score-value").textContent = "--";
-        document.getElementById("badge-score-label").textContent = "Unenriched";
+        document.getElementById("badge-score-value").textContent = "AI";
+        document.getElementById("badge-score-label").textContent = "Processing...";
+      } else if (creator.ai_status === 'Failed') {
+        document.getElementById("radar-chart-container").innerHTML = `
+          <div style="text-align: center; color: var(--color-text-gray); padding: 40px 0;">
+            <div style="font-size: 32px; margin-bottom: 12px;">⚠️</div>
+            <h4 style="color: #fff; margin-bottom: 8px;">AI Scoring Failed</h4>
+            <p style="font-size: 11px; max-width: 300px; margin: 0 auto; line-height: 1.5; color: var(--color-text-gray);">An error occurred during Gemini analysis. Please try resetting or updating your profile information to trigger retry.</p>
+          </div>
+        `;
+        document.getElementById("badge-score-value").textContent = "Err";
+        document.getElementById("badge-score-label").textContent = "Failed";
+      } else {
+        if (creator.profile_status === 'Ready') {
+          document.getElementById("radar-chart-container").innerHTML = `
+            <div style="text-align: center; color: var(--color-text-gray); padding: 40px 0;">
+              <p>Profile details are complete.</p>
+              <button class="btn btn-primary" style="margin-top: 12px;" onclick="App.switchSubview('creator-profile-mgmt')">
+                Go to Profile to Trigger Analysis
+              </button>
+            </div>
+          `;
+          document.getElementById("badge-score-value").textContent = "--";
+          document.getElementById("badge-score-label").textContent = "Ready for AI";
+        } else {
+          document.getElementById("radar-chart-container").innerHTML = `
+            <div style="text-align: center; color: var(--color-text-gray); padding: 40px 0;">
+              <p>Score details not generated yet.</p>
+              <button class="btn btn-primary" style="margin-top: 12px;" onclick="App.switchSubview('creator-profile-mgmt')">
+                Complete Profile to Calculate Score
+              </button>
+            </div>
+          `;
+          document.getElementById("badge-score-value").textContent = "--";
+          document.getElementById("badge-score-label").textContent = "Unenriched";
+        }
       }
 
       // Load AI suggestions
@@ -658,6 +941,7 @@ window.App = {
 
   loadCreatorIntelligence: async function() {
     try {
+      if (!this.currentUser) return;
       const creator = await window.DB.getProfile(this.currentUser.id, "creator");
       if (!creator) return;
 
@@ -683,21 +967,71 @@ window.App = {
 
         document.getElementById("intel-score-explanation").textContent = scores.ai_explanation || "No explanation provided.";
 
-        // Score breakdown bars
-        document.getElementById("intel-breakdown-trust").textContent = `${scores.audience_trust}%`;
-        document.getElementById("intel-bar-trust").style.width = `${scores.audience_trust}%`;
+        // Score breakdown bars with -1 Insufficient Data handling
+        const updateBar = (barId, labelId, val, unlockMsg) => {
+          const barEl = document.getElementById(barId);
+          const labelEl = document.getElementById(labelId);
+          if (!barEl || !labelEl) return;
+          
+          const container = barEl.parentElement.parentElement;
+          let descEl = container.querySelector(".unlock-desc");
+          
+          if (val < 0) {
+            labelEl.textContent = "Insufficient Data";
+            labelEl.style.color = "#ff6b6b";
+            barEl.style.width = "0%";
+            if (!descEl) {
+              descEl = document.createElement("div");
+              descEl.className = "unlock-desc";
+              descEl.style.fontSize = "10px";
+              descEl.style.color = "var(--color-text-gray)";
+              descEl.style.marginTop = "4px";
+              descEl.style.lineHeight = "1.3";
+              container.appendChild(descEl);
+            }
+            descEl.innerHTML = `🔑 <em>To unlock:</em> ${unlockMsg}`;
+          } else {
+            labelEl.textContent = `${val}%`;
+            labelEl.style.color = "#fff";
+            barEl.style.width = `${val}%`;
+            if (descEl) descEl.remove();
+          }
+        };
 
-        document.getElementById("intel-breakdown-engagement").textContent = `${scores.engagement_rate}%`;
-        document.getElementById("intel-bar-engagement").style.width = `${scores.engagement_rate}%`;
+        updateBar(
+          "intel-bar-trust", 
+          "intel-breakdown-trust", 
+          scores.audience_trust, 
+          "Add your audience demographics & age range details on Step 3 of onboarding."
+        );
 
-        document.getElementById("intel-breakdown-regional").textContent = `${scores.regional_influence}%`;
-        document.getElementById("intel-bar-regional").style.width = `${scores.regional_influence}%`;
+        updateBar(
+          "intel-bar-engagement", 
+          "intel-breakdown-engagement", 
+          scores.engagement_rate_score, 
+          "Connect and sync your Instagram or YouTube account metrics on Step 2 of onboarding."
+        );
 
-        document.getElementById("intel-breakdown-consistency").textContent = `${scores.content_consistency}%`;
-        document.getElementById("intel-bar-consistency").style.width = `${scores.content_consistency}%`;
+        updateBar(
+          "intel-bar-regional", 
+          "intel-breakdown-regional", 
+          scores.regional_influence, 
+          "Specify your main audience location dialects on Step 3 of onboarding."
+        );
 
-        document.getElementById("intel-breakdown-readiness").textContent = `${scores.brand_readiness}%`;
-        document.getElementById("intel-bar-readiness").style.width = `${scores.brand_readiness}%`;
+        updateBar(
+          "intel-bar-consistency", 
+          "intel-breakdown-consistency", 
+          scores.content_consistency, 
+          "Provide posting frequency details on Step 3 of onboarding."
+        );
+
+        updateBar(
+          "intel-bar-readiness", 
+          "intel-breakdown-readiness", 
+          scores.brand_readiness, 
+          "Configure rate cards, previous campaigns, and target brands on Step 4 of onboarding."
+        );
       } else {
         document.getElementById("intel-badge-score-value").textContent = "--";
         document.getElementById("intel-badge-score-label").textContent = "Unenriched";
@@ -744,6 +1078,7 @@ window.App = {
 
   loadMyCampaigns: async function() {
     try {
+      if (!this.currentUser) return;
       const creator = await window.DB.getProfile(this.currentUser.id, "creator");
       if (!creator) return;
 
@@ -766,27 +1101,68 @@ window.App = {
       }
 
       filtered.forEach(c => {
-        const badgeClass = c.status === "accepted" ? "tag-green" : c.status === "rejected" ? "tag-indigo" : "tag-cyan";
-        const statusLabel = c.status === "accepted" ? "ONGOING" : c.status.toUpperCase();
+        // Map database status + price_justification simulation metadata to user-friendly statuses
+        let displayStatus = "Applied";
+        let badgeClass = "tag-cyan";
         
+        if (c.status === "accepted") {
+          displayStatus = "Selected";
+          badgeClass = "tag-green pulse-badge-green";
+          if (c.price_justification && c.price_justification.includes("In Progress")) {
+            displayStatus = "In Progress";
+            badgeClass = "tag-blue pulse-badge-blue";
+          }
+        } else if (c.status === "completed") {
+          displayStatus = "Completed";
+          badgeClass = "tag-green";
+        } else if (c.status === "rejected") {
+          displayStatus = "Rejected";
+          badgeClass = "tag-red";
+        } else if (c.status === "pending") {
+          if (c.price_justification && c.price_justification.includes("State: ")) {
+            displayStatus = c.price_justification.split("State: ")[1].trim();
+            badgeClass = "tag-cyan";
+          } else {
+            displayStatus = "Applied";
+            badgeClass = "tag-cyan";
+          }
+        }
+
+        const isOutbound = c.initiated_by === "creator";
+
         container.innerHTML += `
-          <div class="glass-card" style="padding: 20px; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px;">
-            <div style="flex: 1; min-width: 250px;">
-              <h3 style="margin: 0 0 8px 0; color: #fff; font-size: 15px;">${c.campaign ? c.campaign.title : 'Campaign Offer'}</h3>
-              <p class="view-subtitle" style="font-size: 12px; margin: 0; line-height:1.5;">
-                Company: <strong>${c.brand ? c.brand.company_name : 'Sponsor'}</strong> | Niche: <strong>${c.campaign ? c.campaign.category : 'N/A'}</strong><br>
-                Offered Budget: <strong>₹${c.suggested_price.toLocaleString('en-IN')}</strong> | Match Score: <strong>${c.match_score}%</strong>
-              </p>
+          <div class="glass-card" style="padding: 20px; margin-bottom: 12px; display: flex; flex-direction: column; gap: 14px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px;">
+              <div style="flex: 1; min-width: 250px;">
+                <h3 style="margin: 0 0 8px 0; color: #fff; font-size: 15px;">${c.campaign ? c.campaign.title : 'Campaign Offer'}</h3>
+                <p class="view-subtitle" style="font-size: 12px; margin: 0; line-height:1.5;">
+                  Company: <strong>${c.brand ? c.brand.company_name : 'Sponsor'}</strong> | Niche: <strong>${c.campaign ? c.campaign.category : 'N/A'}</strong><br>
+                  Budget: <strong>₹${c.suggested_price.toLocaleString('en-IN')}</strong> | Match Score: <strong>${c.match_score || 75}%</strong> | Applied: <strong>${new Date(c.created_at).toLocaleDateString()}</strong>
+                </p>
+              </div>
+              
+              <div style="display: flex; align-items: center; gap: 12px;">
+                <span class="tag ${badgeClass}" style="font-size: 10px; padding: 4px 8px; font-weight:700;">${displayStatus.toUpperCase()}</span>
+                ${(!isOutbound && c.status === "pending") ? `
+                  <div style="display: flex; gap: 8px;">
+                    <button class="btn btn-primary" style="padding: 6px 12px; font-size: 11px;" onclick="App.handleCollabActionCampaigns('${c.id}', 'accepted')">Accept</button>
+                    <button class="btn btn-tertiary" style="padding: 6px 12px; font-size: 11px;" onclick="App.handleCollabActionCampaigns('${c.id}', 'rejected')">Decline</button>
+                  </div>
+                ` : ''}
+              </div>
             </div>
-            
-            <div style="display: flex; align-items: center; gap: 12px;">
-              <span class="tag ${badgeClass}" style="font-size: 10px; padding: 4px 8px;">${statusLabel}</span>
-              ${c.status === "pending" ? `
-                <div style="display: flex; gap: 8px;">
-                  <button class="btn btn-primary" style="padding: 6px 12px; font-size: 11px;" onclick="App.handleCollabActionCampaigns('${c.id}', 'accepted')">Accept</button>
-                  <button class="btn btn-tertiary" style="padding: 6px 12px; font-size: 11px;" onclick="App.handleCollabActionCampaigns('${c.id}', 'rejected')">Decline</button>
-                </div>
-              ` : ''}
+
+            <!-- developer simulation control panel -->
+            <div class="collab-simulation-panel" style="padding: 12px; border: 1px dashed #f59e0b; border-radius: 6px; background: rgba(245, 158, 11, 0.015); display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+              <span style="font-size: 9px; font-weight: 700; color: #f59e0b; letter-spacing: 0.5px;">[DEVELOPER TEST SIMULATION]</span>
+              <div style="display: flex; gap: 6px; flex-wrap: wrap;">
+                <button class="btn btn-secondary" style="font-size: 9px; padding: 3px 6px; border-color: rgba(255,255,255,0.15);" onclick="App.simulateCampaignStatus('${c.id}', 'Under Review')">Under Review</button>
+                <button class="btn btn-secondary" style="font-size: 9px; padding: 3px 6px; border-color: rgba(255,255,255,0.15);" onclick="App.simulateCampaignStatus('${c.id}', 'Shortlisted')">Shortlisted</button>
+                <button class="btn btn-secondary" style="font-size: 9px; padding: 3px 6px; border-color: rgba(255,255,255,0.15);" onclick="App.simulateCampaignStatus('${c.id}', 'Selected')">Selected (Outcome)</button>
+                <button class="btn btn-secondary" style="font-size: 9px; padding: 3px 6px; border-color: rgba(255,255,255,0.15);" onclick="App.simulateCampaignStatus('${c.id}', 'In Progress')">In Progress</button>
+                <button class="btn btn-secondary" style="font-size: 9px; padding: 3px 6px; border-color: rgba(255,255,255,0.15);" onclick="App.simulateCampaignStatus('${c.id}', 'Completed')">Completed (Outcome)</button>
+                <button class="btn btn-secondary" style="font-size: 9px; padding: 3px 6px; border-color: rgba(255,255,255,0.15);" onclick="App.simulateCampaignStatus('${c.id}', 'Rejected')">Reject (Outcome)</button>
+              </div>
             </div>
           </div>
         `;
@@ -798,7 +1174,16 @@ window.App = {
 
   handleCollabActionCampaigns: async function(collabId, status) {
     try {
-      await window.DB.updateCollabStatus(collabId, status);
+      if (window.DB.isLive()) {
+        const response = await fetch(`${window.N8N.backendUrl}/collaborations/${collabId}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ status })
+        });
+        if (!response.ok) throw new Error("Failed to update status on server.");
+      } else {
+        await window.DB.updateCollabStatus(collabId, status);
+      }
       this.showToast(`Invitation marked as ${status}`);
       this.loadMyCampaigns();
     } catch (e) {
@@ -806,8 +1191,208 @@ window.App = {
     }
   },
 
+  simulateCampaignStatus: async function(collabId, targetStatus) {
+    this.showToast(`Simulating status change to ${targetStatus}...`, "info");
+    try {
+      let dbStatus = "pending";
+      let price_justification = "Simulation update.";
+      
+      if (targetStatus === "Selected" || targetStatus === "In Progress") {
+        dbStatus = "accepted";
+        if (targetStatus === "In Progress") {
+          price_justification = "Simulation update: In Progress";
+        }
+      } else if (targetStatus === "Completed") {
+        dbStatus = "completed";
+      } else if (targetStatus === "Rejected") {
+        dbStatus = "rejected";
+      } else {
+        dbStatus = "pending";
+        price_justification = `Simulation update: State: ${targetStatus}`;
+      }
+
+      if (window.DB.isLive()) {
+        const response = await fetch(`${window.N8N.backendUrl}/collaborations/${collabId}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ status: dbStatus, price_justification })
+        });
+        if (!response.ok) {
+          throw new Error("Failed to update status on server.");
+        }
+      } else {
+        const collabs = JSON.parse(localStorage.getItem("cl_collabs") || "[]");
+        const idx = collabs.findIndex(c => c.id === collabId);
+        if (idx !== -1) {
+          collabs[idx].status = dbStatus;
+          collabs[idx].price_justification = price_justification;
+          localStorage.setItem("cl_collabs", JSON.stringify(collabs));
+        }
+      }
+
+      // Add a system notification to creator
+      let notifyType = "info";
+      if (targetStatus === "Selected" || targetStatus === "Completed") notifyType = "success";
+      if (targetStatus === "Rejected") notifyType = "warning";
+
+      this.addSystemNotification(
+        `Campaign Status Update`,
+        `Your application status has been updated to "${targetStatus}".`,
+        notifyType
+      );
+
+      this.showToast(`Status updated to ${targetStatus}!`, "success");
+      await this.loadMyCampaigns();
+    } catch (err) {
+      this.showToast(`Simulation failed: ${err.message}`, "error");
+    }
+  },
+
+  loadCreatorEarnings: async function() {
+    try {
+      if (!this.currentUser) return;
+      const creator = await window.DB.getProfile(this.currentUser.id, "creator");
+      if (!creator) return;
+
+      let collabs = [];
+      if (window.DB.isLive()) {
+        collabs = await window.DB.getCollabsForCreator(creator.id) || [];
+      } else {
+        const localCollabs = JSON.parse(localStorage.getItem("cl_collabs") || "[]");
+        const campaigns = JSON.parse(localStorage.getItem("cl_campaigns") || "[]");
+        const brands = JSON.parse(localStorage.getItem("cl_brands") || "{}");
+        collabs = localCollabs.filter(c => c.creator_id === creator.id).map(c => ({
+          ...c,
+          campaign: campaigns.find(camp => camp.id === c.campaign_id),
+          brand: brands[c.brand_id]
+        }));
+      }
+
+      let total = 0;
+      let pending = 0;
+      let paid = 0;
+
+      const historyBody = document.getElementById("earnings-history-body");
+      historyBody.innerHTML = "";
+
+      const earningCollabs = collabs.filter(c => c.status === "accepted" || c.status === "completed");
+
+      if (earningCollabs.length === 0) {
+        historyBody.innerHTML = `<tr><td colspan="4" style="text-align:center; padding:24px; color:var(--color-text-gray);">No earnings accumulated yet. Apply to campaigns and get selected to start earning!</td></tr>`;
+      } else {
+        earningCollabs.forEach(c => {
+          const amount = parseInt(c.suggested_price) || 0;
+          if (c.status === "accepted") {
+            pending += amount;
+          } else if (c.status === "completed") {
+            paid += amount;
+          }
+
+          const statusBadge = c.status === "accepted" ? '<span class="tag tag-indigo">PENDING</span>' : '<span class="tag tag-green">PAID</span>';
+
+          historyBody.innerHTML += `
+            <tr style="border-bottom:1px solid rgba(255,255,255,0.03);">
+              <td style="padding:12px 8px; color:#fff; font-weight:600;">${c.campaign ? c.campaign.title : 'Campaign Sponsorship'}</td>
+              <td style="padding:12px 8px;">${c.brand ? c.brand.company_name : 'Sponsor'}</td>
+              <td style="padding:12px 8px; text-align:right; color:#fff; font-weight:600;">₹${amount.toLocaleString('en-IN')}</td>
+              <td style="padding:12px 8px; text-align:right;">${statusBadge}</td>
+            </tr>
+          `;
+        });
+      }
+
+      total = pending + paid;
+
+      document.getElementById("earnings-total").textContent = `₹${total.toLocaleString('en-IN')}`;
+      document.getElementById("earnings-pending").textContent = `₹${pending.toLocaleString('en-IN')}`;
+      document.getElementById("earnings-paid").textContent = `₹${paid.toLocaleString('en-IN')}`;
+
+    } catch (err) {
+      console.error("Failed to load earnings:", err);
+    }
+  },
+
+  loadCreatorAssistant: function() {
+    const chatContainer = document.getElementById("assistant-chat-messages");
+    if (chatContainer) chatContainer.scrollTop = chatContainer.scrollHeight;
+  },
+
+  sendAssistantSuggestion: function(promptText) {
+    const input = document.getElementById("assistant-chat-input");
+    if (input) {
+      input.value = promptText;
+      const form = document.getElementById("assistant-chat-form");
+      if (form) {
+        form.dispatchEvent(new Event("submit", { cancelable: true }));
+      }
+    }
+  },
+
+  handleAssistantChatSubmit: async function(e) {
+    e.preventDefault();
+    const input = document.getElementById("assistant-chat-input");
+    if (!input) return;
+    const promptText = input.value.trim();
+    if (!promptText) return;
+
+    input.value = "";
+
+    const chatContainer = document.getElementById("assistant-chat-messages");
+    if (!chatContainer) return;
+
+    // 1. Append User Message
+    const userMsg = document.createElement("div");
+    userMsg.style.cssText = "background:rgba(0, 242, 166, 0.05); padding:12px 16px; border-radius:8px; max-width:80%; align-self:flex-end; color:#fff; line-height:1.5; border-right:3px solid var(--color-primary-cyan);";
+    userMsg.textContent = promptText;
+    chatContainer.appendChild(userMsg);
+    chatContainer.scrollTop = chatContainer.scrollHeight;
+
+    // 2. Append Loading Message
+    const loadingMsg = document.createElement("div");
+    loadingMsg.style.cssText = "background:rgba(255,255,255,0.02); padding:12px 16px; border-radius:8px; max-width:80%; align-self:flex-start; color:var(--color-text-gray); line-height:1.5;";
+    loadingMsg.innerHTML = '<div style="display:flex; align-items:center; gap:8px;"><span class="pulse-badge-blue" style="width:6px; height:6px; background:#6366f1; border-radius:50%; display:inline-block;"></span><span>AI Assistant is thinking...</span></div>';
+    chatContainer.appendChild(loadingMsg);
+    chatContainer.scrollTop = chatContainer.scrollHeight;
+
+    try {
+      // 3. Query Real Backend Route /api/assistant/chat
+      const response = await fetch(`${window.N8N.backendUrl}/assistant/chat`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          creator_id: this.currentUser.id,
+          message: promptText
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to communicate with Assistant API.");
+      }
+
+      const result = await response.json();
+      
+      loadingMsg.remove();
+
+      // 4. Append AI response message
+      const botMsg = document.createElement("div");
+      botMsg.style.cssText = "background:rgba(255,255,255,0.02); padding:12px 16px; border-radius:8px; max-width:80%; align-self:flex-start; color:#fff; line-height:1.5; border-left:3px solid var(--color-primary-cyan);";
+      botMsg.textContent = result.response;
+      chatContainer.appendChild(botMsg);
+      chatContainer.scrollTop = chatContainer.scrollHeight;
+
+    } catch (err) {
+      loadingMsg.remove();
+      const errorMsg = document.createElement("div");
+      errorMsg.style.cssText = "background:rgba(239, 68, 68, 0.05); padding:12px 16px; border-radius:8px; max-width:80%; align-self:flex-start; color:#ef4444; line-height:1.5; border-left:3px solid #ef4444;";
+      errorMsg.textContent = `Error: ${err.message}`;
+      chatContainer.appendChild(errorMsg);
+      chatContainer.scrollTop = chatContainer.scrollHeight;
+    }
+  },
+
   loadCreatorProfileForm: async function() {
     try {
+      if (!this.currentUser) return;
       const creator = await window.DB.getProfile(this.currentUser.id, "creator");
       if (!creator) return;
       
@@ -881,17 +1466,21 @@ window.App = {
   // ==================== BRAND SUB-VIEWS ====================
   loadBrandDashboard: async function() {
     try {
+      if (!this.currentUser) return;
       const brand = await window.DB.getProfile(this.currentUser.id, "brand");
       if (!brand) return;
 
-      const campaigns = await window.DB.getCampaigns(brand.id);
-      const collabs = JSON.parse(localStorage.getItem("cl_collabs") || "[]");
-      const brandCollabs = collabs.filter(c => c.brand_id === brand.id);
+    const campaigns = await window.DB.getCampaigns(brand.id);
+      const brandCollabs = await window.DB.getCollabsForBrand(brand.id) || [];
+
+      // Map status in memory to Published (active), Draft (cancelled), Closed (completed)
+      const activeCamps = campaigns.filter(c => c.status === "active");
+      const activeCollabs = brandCollabs.filter(c => c.status === "accepted" || c.status === "completed");
 
       // Populate Stats
-      document.getElementById("brand-stat-active-camps").textContent = campaigns.length;
-      document.getElementById("brand-stat-active-collabs").textContent = brandCollabs.filter(c => c.status === "accepted").length;
-      const totalBudget = campaigns.reduce((sum, c) => sum + (parseInt(c.budget) || 0), 0);
+      document.getElementById("brand-stat-active-camps").textContent = activeCamps.length;
+      document.getElementById("brand-stat-active-collabs").textContent = activeCollabs.length;
+      const totalBudget = activeCamps.reduce((sum, c) => sum + (parseInt(c.budget) || 0), 0);
       document.getElementById("brand-stat-total-budget").textContent = `₹${totalBudget.toLocaleString('en-IN')}`;
 
       // Populate pipeline table
@@ -902,13 +1491,22 @@ window.App = {
       } else {
         for (const c of campaigns) {
           const matches = await window.DB.getCampaignMatches(c.id);
+          let labelClass = "tag-cyan";
+          let labelText = "DRAFT";
+          if (c.status === "active") {
+            labelClass = "tag-green";
+            labelText = "PUBLISHED";
+          } else if (c.status === "completed") {
+            labelClass = "tag-indigo";
+            labelText = "CLOSED";
+          }
           campsBody.innerHTML += `
             <tr style="border-bottom: 1px solid rgba(255,255,255,0.02);">
               <td style="padding:12px 8px; color:#fff; font-weight:600;">${c.title}</td>
               <td style="padding:12px 8px; color:var(--color-text-gray); text-transform: capitalize;">${c.category}</td>
               <td style="padding:12px 8px; color:#00F2A6;">₹${(c.budget || 0).toLocaleString('en-IN')}</td>
               <td style="padding:12px 8px;"><span class="tag tag-cyan">${matches.length} matches</span></td>
-              <td style="padding:12px 8px;"><span class="tag tag-green">${c.status.toUpperCase()}</span></td>
+              <td style="padding:12px 8px;"><span class="tag ${labelClass}">${labelText}</span></td>
             </tr>
           `;
         }
@@ -973,16 +1571,9 @@ window.App = {
             <span style="color:#fff;">Campaign Brief: 'Swad Indore Launch' draft accepted.</span>
             <span style="color:var(--color-text-gray); font-size:10px;">1h ago</span>
           </div>
-        `;
-      }
-
-    } catch (e) {
-      console.error(e);
-    }
-  },
-
   loadBrandAiMatch: async function() {
     try {
+      if (!this.currentUser) return;
       const brand = await window.DB.getProfile(this.currentUser.id, "brand");
       if (!brand) return;
 
@@ -995,10 +1586,103 @@ window.App = {
         campaigns.forEach(c => {
           select.innerHTML += `<option value="${c.id}">${c.title}</option>`;
         });
+        if (this.selectedCampaignId) {
+          select.value = this.selectedCampaignId;
+        } else if (campaigns.length > 0) {
+          this.selectedCampaignId = campaigns[0].id;
+          select.value = this.selectedCampaignId;
+        }
       }
-      document.getElementById("brand-match-results-container").innerHTML = "";
+      
+      if (this.selectedCampaignId) {
+        await this.displayBrandAiMatches(this.selectedCampaignId);
+      } else {
+        document.getElementById("brand-match-results-container").innerHTML = "";
+      }
     } catch (e) {
       console.error(e);
+    }
+  },
+
+  handleCampaignSelectChange: async function(campaignId) {
+    this.selectedCampaignId = campaignId;
+    await this.displayBrandAiMatches(campaignId);
+  },
+
+  displayBrandAiMatches: async function(campaignId) {
+    const container = document.getElementById("brand-match-results-container");
+    if (!container) return;
+    container.innerHTML = `
+      <div style="text-align: center; padding: 20px;">
+        <p class="view-subtitle" style="margin:0; color: var(--color-primary-cyan);">Loading saved matches...</p>
+      </div>
+    `;
+
+    try {
+      const matches = await window.DB.getCampaignMatches(campaignId);
+      container.innerHTML = "";
+
+      if (!matches || matches.length === 0) {
+        container.innerHTML = `
+          <div class="glass-card" style="text-align: center; padding: 40px; border: 1px dashed var(--color-border); border-radius: 8px;">
+            <p class="view-subtitle" style="margin:0;">No matching creator profiles found in registry. Click "Calculate Matches" to run n8n sourcing.</p>
+          </div>
+        `;
+        return;
+      }
+
+      matches.forEach(m => {
+        const creator = m.creator;
+        if (!creator) return;
+
+        container.innerHTML += `
+          <div class="glass-card" style="padding: 24px; margin-bottom: 16px; border-left: 4px solid var(--color-primary-cyan); text-align: left;">
+            <div style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:16px;">
+              <div style="display:flex; gap:16px; align-items:center;">
+                <img src="${creator.avatar_url}" style="width:54px; height:54px; border-radius:50%; border:2px solid var(--color-primary-cyan);">
+                <div>
+                  <h3 style="margin:0; color:#fff; font-size:16px;">${creator.full_name} <span style="font-size:10px; color:var(--color-text-gray); font-weight:normal; margin-left:8px;">ID: ${creator.creator_code || 'CR_N/A'}</span></h3>
+                  <p style="margin:4px 0 0 0; font-size:12px; color:var(--color-text-gray);">
+                    Niche: <strong>${creator.categories ? creator.categories.join(', ') : 'General'}</strong> | Followers: <strong>${(creator.followers_count || 0).toLocaleString()}</strong>
+                  </p>
+                </div>
+              </div>
+
+              <div style="text-align:right;">
+                <div style="font-size:24px; font-weight:800; color:var(--color-primary-cyan);">${m.match_score}%</div>
+                <div style="font-size:10px; color:var(--color-text-gray); text-transform:uppercase; font-weight:600; margin-top:2px;">AI Match Score</div>
+              </div>
+            </div>
+
+            <div style="margin-top:16px; padding:12px; background:rgba(255,255,255,0.02); border-radius:8px;">
+              <div style="font-weight:600; font-size:12px; color:#fff; display:flex; align-items:center; gap:6px;">
+                <span>🤖</span> Gemini Sourcing Explanation
+              </div>
+              <p style="margin:6px 0 0 0; font-size:11px; color:var(--color-text-gray); line-height:1.5;">
+                ${m.match_explanation || m.ai_explanation || "High alignment based on dialect fluency and demographic overlap with Central Indian audience clusters."}
+              </p>
+            </div>
+
+            <div style="margin-top:16px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px;">
+              <div style="font-size:12px; color:var(--color-text-gray);">
+                Recommended Pricing Index: <strong style="color:#00F2A6;">₹${(creator.pricing_min || 10000).toLocaleString('en-IN')} - ₹${(creator.pricing_premium || 20000).toLocaleString('en-IN')}</strong>
+              </div>
+              <div style="display:flex; gap:10px;">
+                <button class="btn btn-tertiary" style="padding:6px 12px; font-size:11px;" onclick="App.showToast('Creator profile saved to matches!')">Save Creator</button>
+                <button class="btn btn-secondary" style="padding:6px 12px; font-size:11px;" onclick="App.openCreatorDetails('${creator.id}', '${campaignId}')">View Profile</button>
+                <button class="btn btn-primary" style="padding:6px 12px; font-size:11px;" onclick="App.expressBrandInterest('${creator.id}', '${campaignId}', ${m.match_score}, ${creator.pricing_min || 10000})">Express Interest</button>
+              </div>
+            </div>
+          </div>
+        `;
+      });
+    } catch (e) {
+      console.error(e);
+      container.innerHTML = `
+        <div class="glass-card" style="text-align: center; padding: 40px; border: 1px dashed var(--color-danger); border-radius: 8px;">
+          <p class="view-subtitle" style="margin:0; color: var(--color-danger);">Failed to load matches: ${e.message}</p>
+        </div>
+      `;
     }
   },
 
@@ -1034,60 +1718,7 @@ window.App = {
 
       setTimeout(async () => {
         this.closePipelineProgressModal();
-        const matches = await window.DB.getCampaignMatches(campaignId);
-        if (!matches || matches.length === 0) {
-          container.innerHTML = `
-            <div class="glass-card" style="text-align: center; padding: 40px; border: 1px dashed var(--color-border); border-radius: 8px;">
-              <p class="view-subtitle" style="margin:0;">No matching creator profiles found in registry.</p>
-            </div>
-          `;
-          return;
-        }
-
-        matches.forEach(m => {
-          const creator = m.creator;
-          if (!creator) return;
-
-          container.innerHTML += `
-            <div class="glass-card" style="padding: 24px; margin-bottom: 16px; border-left: 4px solid var(--color-primary-cyan); text-align: left;">
-              <div style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:16px;">
-                <div style="display:flex; gap:16px; align-items:center;">
-                  <img src="${creator.avatar_url}" style="width:54px; height:54px; border-radius:50%; border:2px solid var(--color-primary-cyan);">
-                  <div>
-                    <h3 style="margin:0; color:#fff; font-size:16px;">${creator.full_name} <span style="font-size:10px; color:var(--color-text-gray); font-weight:normal; margin-left:8px;">ID: ${creator.creator_code || 'CR_N/A'}</span></h3>
-                    <p style="margin:4px 0 0 0; font-size:12px; color:var(--color-text-gray);">
-                      Niche: <strong>${creator.categories ? creator.categories.join(', ') : 'General'}</strong> | Followers: <strong>${(creator.followers_count || 0).toLocaleString()}</strong>
-                    </p>
-                  </div>
-                </div>
-
-                <div style="text-align:right;">
-                  <div style="font-size:24px; font-weight:800; color:var(--color-primary-cyan);">${m.match_score}%</div>
-                  <div style="font-size:10px; color:var(--color-text-gray); text-transform:uppercase; font-weight:600; margin-top:2px;">AI Match Score</div>
-                </div>
-              </div>
-
-              <div style="margin-top:16px; padding:12px; background:rgba(255,255,255,0.02); border-radius:8px;">
-                <div style="font-weight:600; font-size:12px; color:#fff; display:flex; align-items:center; gap:6px;">
-                  <span>🤖</span> Gemini Sourcing Explanation
-                </div>
-                <p style="margin:6px 0 0 0; font-size:11px; color:var(--color-text-gray); line-height:1.5;">
-                  ${m.ai_explanation || "High alignment based on dialect fluency and demographic overlap with Central Indian audience clusters."}
-                </p>
-              </div>
-
-              <div style="margin-top:16px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px;">
-                <div style="font-size:12px; color:var(--color-text-gray);">
-                  Recommended Pricing Index: <strong style="color:#00F2A6;">₹${(creator.pricing_min || 10000).toLocaleString('en-IN')} - ₹${(creator.pricing_premium || 20000).toLocaleString('en-IN')}</strong>
-                </div>
-                <div style="display:flex; gap:10px;">
-                  <button class="btn btn-tertiary" style="padding:6px 12px; font-size:11px;" onclick="App.showToast('Creator profile saved to matches!')">Save Creator</button>
-                  <button class="btn btn-primary" style="padding:6px 12px; font-size:11px;" onclick="App.expressBrandInterest('${creator.id}', '${campaignId}', ${m.match_score}, ${creator.pricing_min || 10000})">Express Interest</button>
-                </div>
-              </div>
-            </div>
-          `;
-        });
+        await this.displayBrandAiMatches(campaignId);
       }, 1000);
 
     } catch (e) {
@@ -1131,6 +1762,7 @@ window.App = {
 
   loadBrandInsights: async function() {
     try {
+      if (!this.currentUser) return;
       const brand = await window.DB.getProfile(this.currentUser.id, "brand");
       if (!brand) return;
 
@@ -1147,26 +1779,41 @@ window.App = {
 
   loadBrandCampaigns: async function() {
     try {
-      const campaigns = await window.DB.getCampaigns(this.currentUser.id);
+      if (!this.currentUser) return;
+      const brand = await window.DB.getProfile(this.currentUser.id, "brand");
+      if (!brand) return;
+
+      const campaigns = await window.DB.getCampaigns(brand.id);
+      this.campaigns = campaigns;
       const listCol = document.getElementById("brand-campaign-list-column");
       listCol.innerHTML = "";
       
       if (campaigns.length > 0) {
         campaigns.forEach(c => {
           const isActive = this.selectedCampaignId === c.id;
+          let labelClass = "tag-cyan";
+          let labelText = "DRAFT";
+          if (c.status === "active") {
+            labelClass = "tag-green";
+            labelText = "PUBLISHED";
+          } else if (c.status === "completed") {
+            labelClass = "tag-indigo";
+            labelText = "CLOSED";
+          }
+
           listCol.innerHTML += `
             <div class="glass-card" style="padding: 16px; margin-bottom: 16px; cursor: pointer; border-left: 4px solid ${isActive ? 'var(--color-primary-cyan)' : 'transparent'}; position: relative;" onclick="App.selectCampaign('${c.id}')">
               <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 4px;">
                 <h4 style="margin: 0; font-size:14px; color:#fff;">${c.title}</h4>
                 <div style="display:flex; gap:8px;">
                   <span onclick="App.editCampaign('${c.id}'); event.stopPropagation();" title="Edit Campaign" style="cursor:pointer; font-size:12px; color:var(--color-text-muted);">✏️</span>
-                  <span onclick="App.archiveCampaign('${c.id}'); event.stopPropagation();" title="Archive Campaign" style="cursor:pointer; font-size:12px; color:var(--color-text-muted);">📥</span>
+                  <span onclick="App.deleteCampaign('${c.id}'); event.stopPropagation();" title="Delete Campaign" style="cursor:pointer; font-size:12px; color:var(--color-text-muted);">🗑️</span>
                 </div>
               </div>
               <p class="view-subtitle" style="font-size: 11px; margin-bottom: 0;">Budget: ₹${c.budget.toLocaleString('en-IN')} | Category: ${c.category}</p>
               <div style="margin-top: 10px; display: flex; justify-content: space-between; align-items: center;">
                 <span class="tag tag-indigo" style="font-size: 9px; padding: 2px 6px;">${c.region}</span>
-                <span class="tag tag-green" style="font-size: 9px; padding: 2px 6px; text-transform:uppercase;">${c.status || 'ACTIVE'}</span>
+                <span class="tag ${labelClass}" style="font-size: 9px; padding: 2px 6px; text-transform:uppercase;">${labelText}</span>
               </div>
             </div>
           `;
@@ -1208,30 +1855,169 @@ window.App = {
     if (!this.selectedCampaignId) return;
     
     try {
-      const campaigns = await window.DB.getCampaigns(this.currentUser.id);
+      const brand = await window.DB.getProfile(this.currentUser.id, "brand");
+      if (!brand) return;
+
+      const campaigns = await window.DB.getCampaigns(brand.id);
       const camp = campaigns.find(c => c.id === this.selectedCampaignId);
       if (!camp) return;
 
+      const collabs = await window.DB.getCollabsForBrand(this.currentUser.id) || [];
+      const campCollabs = collabs.filter(c => c.campaign_id === camp.id);
+
       const matches = await window.DB.getCampaignMatches(this.selectedCampaignId);
-      
-      let matchesHTML = "";
-      if (matches.length > 0) {
-        matches.forEach(m => {
-          if (!m.creator) return;
-          matchesHTML += `
-            <div class="creator-match-row">
-              <div class="creator-info-block">
-                <img src="${m.creator.avatar_url}" class="creator-avatar-sm" alt="Avatar">
-                <div class="creator-details-sm">
-                  <h4>${m.creator.full_name}</h4>
-                  <p>${m.creator.categories.join("/")} | ${m.creator.languages.join("/")}</p>
+
+      // 1. Render Applications Received (initiated_by === 'creator')
+      const applications = campCollabs.filter(c => c.initiated_by === 'creator');
+      let applicationsHTML = "";
+
+      if (applications.length === 0) {
+        applicationsHTML = `
+          <div style="text-align: center; padding: 24px 10px; border: 1px dashed rgba(255,255,255,0.05); border-radius: 8px;">
+            <p class="view-subtitle" style="font-size: 12px; margin: 0;">No creator applications received for this campaign yet.</p>
+          </div>
+        `;
+      } else {
+        applications.forEach(app => {
+          const creator = app.creator;
+          if (!creator) return;
+
+          // Resolve scores (could be in creator_scores nested, or flat merged)
+          const creatorScores = creator.creator_scores && creator.creator_scores[0] ? creator.creator_scores[0] : {};
+          const cis = creatorScores.intelligence_score || 75;
+          const trust = creatorScores.audience_trust || 75;
+          const engagement = creatorScores.engagement || 75;
+          const regional = creatorScores.regional_influence || 75;
+          const consistency = creatorScores.content_consistency || 75;
+          const readiness = creatorScores.brand_readiness || 75;
+
+          // Parse current state from price_justification simulation text
+          let displayStatus = "Applied";
+          let badgeClass = "tag-cyan";
+          
+          if (app.status === "accepted") {
+            displayStatus = "Selected";
+            badgeClass = "tag-green pulse-badge-green";
+            if (app.price_justification && app.price_justification.includes("In Progress")) {
+              displayStatus = "In Progress";
+              badgeClass = "tag-blue pulse-badge-blue";
+            }
+          } else if (app.status === "completed") {
+            displayStatus = "Completed";
+            badgeClass = "tag-green";
+          } else if (app.status === "rejected") {
+            displayStatus = "Rejected";
+            badgeClass = "tag-red";
+          } else if (app.status === "pending") {
+            if (app.price_justification && app.price_justification.includes("State: ")) {
+              displayStatus = app.price_justification.split("State: ")[1].trim();
+              badgeClass = "tag-cyan";
+            } else {
+              displayStatus = "Applied";
+              badgeClass = "tag-cyan";
+            }
+          }
+
+          // Build Action buttons dynamically based on current simulation state
+          let actionButtons = "";
+          if (displayStatus === "Applied") {
+            actionButtons = `
+              <button class="btn btn-primary" style="padding: 4px 8px; font-size: 10px;" onclick="App.handleApplicationAction('${app.id}', 'pending', 'State: Under Review')">Review Application</button>
+              <button class="btn btn-tertiary" style="padding: 4px 8px; font-size: 10px;" onclick="App.handleApplicationAction('${app.id}', 'rejected', 'Rejected')">Reject</button>
+            `;
+          } else if (displayStatus === "Under Review") {
+            actionButtons = `
+              <button class="btn btn-primary" style="padding: 4px 8px; font-size: 10px;" onclick="App.handleApplicationAction('${app.id}', 'pending', 'State: Shortlisted')">Shortlist Creator</button>
+              <button class="btn btn-tertiary" style="padding: 4px 8px; font-size: 10px;" onclick="App.handleApplicationAction('${app.id}', 'rejected', 'Rejected')">Reject</button>
+            `;
+          } else if (displayStatus === "Shortlisted") {
+            actionButtons = `
+              <button class="btn btn-primary" style="padding: 4px 8px; font-size: 10px;" onclick="App.handleApplicationAction('${app.id}', 'accepted', 'Selected')">Select Creator</button>
+              <button class="btn btn-tertiary" style="padding: 4px 8px; font-size: 10px;" onclick="App.handleApplicationAction('${app.id}', 'rejected', 'Rejected')">Reject</button>
+            `;
+          } else if (displayStatus === "Selected") {
+            actionButtons = `
+              <button class="btn btn-primary" style="padding: 4px 8px; font-size: 10px;" onclick="App.handleApplicationAction('${app.id}', 'accepted', 'In Progress')">Start Collaboration</button>
+            `;
+          } else if (displayStatus === "In Progress") {
+            actionButtons = `
+              <button class="btn btn-green" style="padding: 4px 8px; font-size: 10px; background:#10b981; border-color:#10b981;" onclick="App.handleApplicationAction('${app.id}', 'completed', 'Completed')">Complete Collaboration</button>
+            `;
+          }
+
+          applicationsHTML += `
+            <div style="border-bottom: 1px solid rgba(255,255,255,0.03); padding: 16px 0; display:flex; flex-direction:column; gap:12px;">
+              <div style="display:flex; justify-content:space-between; align-items:start; flex-wrap:wrap; gap:12px;">
+                <div style="display:flex; gap:12px; align-items:center;">
+                  <img src="${creator.avatar_url || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150'}" style="width:36px; height:36px; border-radius:50%; border:1px solid rgba(255,255,255,0.1);" alt="Avatar">
+                  <div>
+                    <h4 style="margin:0; color:#fff; font-size:14px; font-weight:600;">${creator.full_name}</h4>
+                    <p class="view-subtitle" style="font-size:11px; margin:2px 0 0 0;">Niches: <strong>${creator.categories ? creator.categories.join(', ') : 'Food'}</strong> | Location: <strong>${creator.city || 'Pune'}, ${creator.state || 'Maharashtra'}</strong></p>
+                  </div>
+                </div>
+                <div style="display:flex; align-items:center; gap:10px;">
+                  <span class="tag ${badgeClass}" style="font-size:10px; padding:3px 8px; font-weight:700;">${displayStatus.toUpperCase()}</span>
+                  <div style="display:flex; gap:6px;">
+                    ${actionButtons}
+                  </div>
                 </div>
               </div>
-              <div class="match-percentage-badge">
-                <div class="match-pct">${m.match_score}% Match</div>
+
+              <!-- Creator Intelligence Variables breakdown -->
+              <div style="display:grid; grid-template-columns: repeat(6, 1fr); gap:8px; background:rgba(255,255,255,0.015); padding:10px; border-radius:6px; text-align:center;">
+                <div>
+                  <div style="font-size:10px; color:var(--color-text-gray);">CIS SCORE</div>
+                  <div style="font-size:13px; font-weight:700; color:var(--color-primary-cyan); margin-top:2px;">${cis}</div>
+                </div>
+                <div>
+                  <div style="font-size:10px; color:var(--color-text-gray);">ENGAGEMENT</div>
+                  <div style="font-size:13px; font-weight:700; color:#fff; margin-top:2px;">${engagement}%</div>
+                </div>
+                <div>
+                  <div style="font-size:10px; color:var(--color-text-gray);">AUDIENCE TRUST</div>
+                  <div style="font-size:13px; font-weight:700; color:#fff; margin-top:2px;">${trust}%</div>
+                </div>
+                <div>
+                  <div style="font-size:10px; color:var(--color-text-gray);">REGIONAL AFF</div>
+                  <div style="font-size:13px; font-weight:700; color:#fff; margin-top:2px;">${regional}%</div>
+                </div>
+                <div>
+                  <div style="font-size:10px; color:var(--color-text-gray);">CONSISTENCY</div>
+                  <div style="font-size:13px; font-weight:700; color:#fff; margin-top:2px;">${consistency}%</div>
+                </div>
+                <div>
+                  <div style="font-size:10px; color:var(--color-text-gray);">READINESS</div>
+                  <div style="font-size:13px; font-weight:700; color:#fff; margin-top:2px;">${readiness}%</div>
+                </div>
+              </div>
+            </div>
+          `;
+        });
+      }
+
+      // 2. Render AI Sourcing Match Recommendations
+      let matchesHTML = "";
+      
+      // Filter out matches that have already applied to avoid double rendering
+      const activeMatchRecommendations = matches.filter(m => !campCollabs.some(c => c.creator_id === m.creator_id));
+
+      if (activeMatchRecommendations.length > 0) {
+        activeMatchRecommendations.forEach(m => {
+          if (!m.creator) return;
+          matchesHTML += `
+            <div class="creator-match-row" style="border-bottom:1px solid rgba(255,255,255,0.02); padding:12px 0; display:flex; justify-content:space-between; align-items:center;">
+              <div class="creator-info-block" style="display:flex; gap:12px; align-items:center;">
+                <img src="${m.creator.avatar_url}" class="creator-avatar-sm" style="width:32px; height:32px; border-radius:50%;" alt="Avatar">
+                <div class="creator-details-sm">
+                  <h4 style="margin:0; font-size:13px; color:#fff;">${m.creator.full_name}</h4>
+                  <p class="view-subtitle" style="font-size:11px; margin:2px 0 0 0;">${m.creator.categories ? m.creator.categories.join("/") : 'Food'} | ${m.creator.languages ? m.creator.languages.join("/") : 'Marathi'}</p>
+                </div>
+              </div>
+              <div class="match-percentage-badge" style="display:flex; align-items:center; gap:12px;">
+                <div class="match-pct" style="font-weight:700; color:var(--color-primary-cyan); font-size:12px;">${m.match_score}% Match</div>
                 <div style="display: flex; gap: 8px;">
-                  <button class="btn btn-secondary" style="padding: 6px 12px; font-size: 11px;" onclick="App.openCreatorDetails('${m.creator_id}', '${this.selectedCampaignId}')">View Analysis</button>
-                  <button class="btn btn-primary" style="padding: 6px 12px; font-size: 11px;" onclick="App.expressCollabInterest('${this.selectedCampaignId}', '${m.creator_id}')">Send Offer</button>
+                  <button class="btn btn-secondary" style="padding: 4px 8px; font-size: 10px;" onclick="App.openCreatorDetails('${m.creator_id}', '${this.selectedCampaignId}')">View Analysis</button>
+                  <button class="btn btn-primary" style="padding: 4px 8px; font-size: 10px;" onclick="App.expressCollabInterest('${this.selectedCampaignId}', '${m.creator_id}')">Send Offer</button>
                 </div>
               </div>
             </div>
@@ -1239,34 +2025,49 @@ window.App = {
         });
       } else {
         matchesHTML = `
-          <div style="text-align: center; padding: 30px 10px;">
-            <p class="view-subtitle">No matching scores generated. Let's run n8n creator profiling calculations now.</p>
-            <button class="btn btn-primary" style="margin-top: 12px;" onclick="App.runCampaignMatching('${camp.id}')">Run Match Analysis</button>
+          <div style="text-align: center; padding: 20px 10px;">
+            <p class="view-subtitle" style="font-size: 11px;">No active recommendations. Run calculations in the AI Creator Match workspace.</p>
+            <button class="btn btn-primary" style="margin-top: 12px; font-size: 11px; padding: 6px 12px;" onclick="App.switchSubview('brand-ai-match')">Go to AI Creator Match</button>
           </div>
         `;
       }
 
+      // Map status for heading render
+      let statusLabelClass = "tag-cyan";
+      let statusLabelText = "DRAFT";
+      if (camp.status === "active") {
+        statusLabelClass = "tag-green";
+        statusLabelText = "PUBLISHED";
+      } else if (camp.status === "completed") {
+        statusLabelClass = "tag-indigo";
+        statusLabelText = "CLOSED";
+      }
+
       workspace.innerHTML = `
-        <div class="luxury-card" style="margin-bottom: 24px;">
+        <div class="luxury-card" style="margin-bottom: 24px; box-sizing:border-box;">
           <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px;">
-            <h2>${camp.title}</h2>
-            <span class="tag tag-green">${camp.status.toUpperCase()}</span>
+            <h2 style="margin:0; font-size:18px; color:#fff;">${camp.title}</h2>
+            <span class="tag ${statusLabelClass}" style="text-transform:uppercase;">${statusLabelText}</span>
           </div>
-          <p style="margin-bottom: 16px; font-size: 14px; line-height: 1.6; color: var(--color-text-gray);">${camp.objective}</p>
-          <div class="tags-container" style="margin-bottom: 16px;">
-            <span class="tag tag-cyan">Target: ${camp.region}</span>
-            <span class="tag tag-indigo">Language: ${camp.language}</span>
-            <span class="tag tag-green">Budget: ₹${camp.budget.toLocaleString('en-IN')}</span>
+          <p style="margin-bottom: 16px; font-size: 13px; line-height: 1.6; color: var(--color-text-gray);">${camp.objective}</p>
+          <div class="tags-container" style="margin-bottom: 16px; display:flex; gap:8px;">
+            <span class="tag tag-cyan" style="font-size:10px;">Target: ${camp.region}</span>
+            <span class="tag tag-indigo" style="font-size:10px;">Language: ${camp.language}</span>
+            <span class="tag tag-green" style="font-size:10px;">Budget: ₹${camp.budget.toLocaleString('en-IN')}</span>
           </div>
-          ${camp.ai_keywords ? `
-            <div style="font-size: 12px; color: var(--color-text-muted);">
-              <strong>AI EXTRACED KEYWORDS:</strong> ${camp.ai_keywords.map(k => `#${k}`).join(" ")}
-            </div>
-          ` : ''}
         </div>
         
-        <div class="luxury-card">
-          <h3 style="margin-bottom: 16px;">Matched Creators & AI Pricing Sourcing</h3>
+        <!-- Creator Applications Section (Applications Received) -->
+        <div class="luxury-card" style="margin-bottom: 24px; box-sizing:border-box;">
+          <h3 style="margin-top:0; margin-bottom: 12px; color:#fff; font-size:15px; font-weight:600;">Applications Received</h3>
+          <div id="workspace-applications-list">
+            ${applicationsHTML}
+          </div>
+        </div>
+
+        <!-- Matched Creators recommendations list -->
+        <div class="luxury-card" style="box-sizing:border-box;">
+          <h3 style="margin-top:0; margin-bottom:12px; color:#fff; font-size:15px; font-weight:600;">AI Sourcing Match Engine Recommendations</h3>
           ${matchesHTML}
         </div>
       `;
@@ -1321,12 +2122,78 @@ window.App = {
     }
   },
 
+  // Location and Chip Helpers for Campaign Form
+  handleCampaignStateChange: function(stateValue) {
+    const citySelect = document.getElementById("camp-city");
+    if (!citySelect) return;
+    
+    citySelect.innerHTML = '<option value="" disabled selected>Select City</option>';
+    const cities = LOCATION_DATA[stateValue] || [];
+    cities.forEach(city => {
+      citySelect.innerHTML += `<option value="${city}">${city}</option>`;
+    });
+    citySelect.disabled = cities.length === 0;
+  },
+
+  handleChipChange: function(checkbox) {
+    const parent = checkbox.parentElement;
+    if (checkbox.checked) {
+      parent.style.borderColor = 'var(--color-primary-cyan)';
+      parent.style.background = 'rgba(0, 212, 255, 0.1)';
+      parent.style.boxShadow = '0 0 8px rgba(0, 212, 255, 0.2)';
+    } else {
+      parent.style.borderColor = 'rgba(79, 70, 229, 0.35)';
+      parent.style.background = 'rgba(255, 255, 255, 0.03)';
+      parent.style.boxShadow = 'none';
+    }
+  },
+
+  ensureStateSelectPopulated: function() {
+    const stateSelect = document.getElementById("camp-state");
+    if (stateSelect && stateSelect.children.length <= 1) {
+      stateSelect.innerHTML = '<option value="" disabled selected>Select State</option>';
+      Object.keys(LOCATION_DATA).sort().forEach(state => {
+        stateSelect.innerHTML += `<option value="${state}">${state}</option>`;
+      });
+    }
+  },
+
+  resetCampaignForm: function() {
+    const form = document.getElementById("campaign-create-form");
+    if (form) {
+      form.reset();
+      delete form.dataset.editId;
+    }
+    
+    // Reset state & city selects
+    const stateSelect = document.getElementById("camp-state");
+    const citySelect = document.getElementById("camp-city");
+    if (stateSelect) stateSelect.value = "";
+    if (citySelect) {
+      citySelect.innerHTML = '<option value="" disabled selected>Select City</option>';
+      citySelect.disabled = true;
+    }
+    
+    // Reset chips styles
+    document.querySelectorAll('input[name="camp-age-group"]').forEach(chk => {
+      chk.checked = false;
+      this.handleChipChange(chk);
+    });
+    document.querySelectorAll('input[name="camp-interest"]').forEach(chk => {
+      chk.checked = false;
+      this.handleChipChange(chk);
+    });
+  },
+
   // Campaign Modals
   showCampaignModal: function() {
+    this.resetCampaignForm();
+    this.ensureStateSelectPopulated();
     document.getElementById("modal-campaign-form").classList.add("active");
   },
 
   closeCampaignModal: function() {
+    this.resetCampaignForm();
     document.getElementById("modal-campaign-form").classList.remove("active");
   },
 
@@ -1334,27 +2201,36 @@ window.App = {
     e.preventDefault();
     const editId = document.getElementById("campaign-create-form").dataset.editId;
     
+    // Gather selected age groups
+    const selectedAges = [];
+    document.querySelectorAll('input[name="camp-age-group"]:checked').forEach(chk => {
+      selectedAges.push(chk.value);
+    });
+    
+    // Gather selected interests
+    const selectedInterests = [];
+    document.querySelectorAll('input[name="camp-interest"]:checked').forEach(chk => {
+      selectedInterests.push(chk.value);
+    });
+
+    const targetAudienceString = `Age: ${selectedAges.join(", ") || "Any"} | Interests: ${selectedInterests.join(", ") || "Any"}`;
+    
     const campaignData = {
       brand_id: this.currentUser.id,
       title: document.getElementById("camp-title").value,
       objective: document.getElementById("camp-objective").value,
       category: document.getElementById("camp-category").value,
-      region: document.getElementById("camp-region").value,
+      region: document.getElementById("camp-city").value, // City name is saved in region
       language: document.getElementById("camp-language").value,
       creator_type: document.getElementById("camp-type").value,
       budget: parseInt(document.getElementById("camp-budget").value) || 0,
-      target_audience: document.getElementById("camp-audience").value
+      target_audience: targetAudienceString,
+      status: document.getElementById("camp-status").value || "active"
     };
 
     try {
       if (editId) {
-        // Edit Mode: update campaign details in local storage directly
-        const campaigns = JSON.parse(localStorage.getItem("cl_campaigns") || "[]");
-        const idx = campaigns.findIndex(c => c.id === editId);
-        if (idx !== -1) {
-          campaigns[idx] = { ...campaigns[idx], ...campaignData };
-          localStorage.setItem("cl_campaigns", JSON.stringify(campaigns));
-        }
+        await window.DB.updateCampaign(editId, campaignData);
         delete document.getElementById("campaign-create-form").dataset.editId;
         this.closeCampaignModal();
         this.showToast("Campaign updated successfully!", "success");
@@ -1365,14 +2241,28 @@ window.App = {
         this.closeCampaignModal();
         this.selectedCampaignId = newCamp.id;
         
-        // Auto trigger matching pipeline
-        await this.runCampaignMatching(newCamp.id);
-        this.showToast("Campaign created & analyzed!", "success");
+        this.showToast("Campaign created successfully!", "success");
+        this.loadBrandCampaigns();
       }
       
       document.getElementById("campaign-create-form").reset();
     } catch (err) {
       this.showToast("Failed to process campaign: " + err.message, "error");
+    }
+  },
+
+  handleApplicationAction: async function(collabId, status, price_justification) {
+    try {
+      await window.DB.updateCollabStatus(collabId, status, price_justification);
+      let stateLabel = price_justification.replace("State: ", "");
+      if (price_justification === "Selected") stateLabel = "Selected (Pending Payout)";
+      if (price_justification === "In Progress") stateLabel = "Collaboration Started";
+      if (price_justification === "Completed") stateLabel = "Collaboration Completed & Payout Cleared";
+      
+      this.showToast(`Application updated: ${stateLabel}`, "success");
+      await this.renderCampaignWorkspace();
+    } catch (err) {
+      this.showToast("Action failed: " + err.message, "error");
     }
   },
 
@@ -2105,14 +2995,67 @@ window.App = {
 
   /* ==================== MULTI-STEP CREATOR ONBOARDING WIZARD ==================== */
   onboardingStep: 1,
-  selectedLanguages: [],
-  selectedCategories: [],
   tempCompiledScores: null,
 
+  startOnboardingWizard: function() {
+    window.location.hash = "#/creator-profile";
+  },
+
+  loadCompleteProfileGatekeeper: async function() {
+    try {
+      const profile = await window.DB.getProfile(this.currentUser.id, "creator");
+      if (!profile) return;
+      
+      if (profile.ai_status === 'Processing') {
+        this.resumeAnalysisPolling = true;
+        this.switchSubview("creator-profile");
+        return;
+      }
+      
+      const score = this.calculateProfileCompleteness(profile);
+      
+      const pctEl = document.getElementById("gatekeeper-progress-pct");
+      const barEl = document.getElementById("gatekeeper-progress-bar");
+      
+      if (pctEl) pctEl.textContent = `${score}%`;
+      if (barEl) barEl.style.width = `${score}%`;
+    } catch (e) {
+      console.error("Failed to load complete profile gatekeeper:", e);
+    }
+  },
+
+  calculateProfileCompleteness: function(profile) {
+    if (!profile) return 0;
+    let score = 0;
+    if (profile.full_name && profile.full_name.trim()) score += 10;
+    if (profile.avatar_url && profile.avatar_url.trim()) score += 10;
+    if (profile.bio && profile.bio.trim()) score += 10;
+    if (profile.city && profile.city.trim()) score += 10;
+    if (profile.state && profile.state.trim()) score += 10;
+    
+    const langs = profile.languages || [];
+    if (langs.length > 0) score += 10;
+    
+    const cats = profile.categories || [];
+    if (cats.length > 0) score += 10;
+    
+    const social = profile.social_links || {};
+    const hasIg = social.instagram && social.instagram.handle && social.instagram.handle.trim();
+    const hasYt = social.youtube && social.youtube.handle && social.youtube.handle.trim();
+    if (hasIg || hasYt) score += 10;
+    
+    const aud = profile.audience_metadata || {};
+    if (aud.location && aud.location.trim() && aud.posting_frequency && aud.posting_frequency.trim()) score += 10;
+    
+    const collab = profile.collab_metadata || {};
+    if (collab.target_brands && collab.target_brands.length > 0 && collab.previous_experience !== undefined) score += 10;
+    
+    return score;
+  },
+
   initOnboardingWizard: async function() {
+    if (!this.currentUser) return;
     this.onboardingStep = 1;
-    this.selectedLanguages = [];
-    this.selectedCategories = [];
     this.tempCompiledScores = null;
     
     // Fetch creator details to pre-populate fields
@@ -2121,75 +3064,116 @@ window.App = {
       document.getElementById("ob-name").value = creator.full_name || "";
       document.getElementById("ob-avatar").value = creator.avatar_url || "";
       document.getElementById("ob-bio").value = creator.bio || "";
-      document.getElementById("ob-city").value = creator.regions ? (creator.regions[0] || "") : "";
-      document.getElementById("ob-state").value = creator.regions ? (creator.regions[1] || "") : "";
-      document.getElementById("ob-country").value = "India";
+      document.getElementById("ob-city").value = creator.city || "";
+      document.getElementById("ob-state").value = creator.state || "";
       
-      document.getElementById("ob-followers").value = creator.followers_count || "";
-      document.getElementById("ob-views").value = creator.average_views || "";
-      document.getElementById("ob-engagement").value = creator.engagement_rate || "";
+      const langs = creator.languages || [];
+      document.getElementById("ob-languages").value = langs.join(", ");
+      
+      const cats = creator.categories || [];
+      document.getElementById("ob-categories").value = cats.join(", ");
+      
+      const social = creator.social_links || {};
+      if (social.instagram) {
+        document.getElementById("ob-ig-handle").value = social.instagram.handle || "";
+        document.getElementById("ob-ig-followers").value = social.instagram.followers || "";
+        document.getElementById("ob-ig-views").value = social.instagram.average_views || "";
+        document.getElementById("ob-ig-engagement").value = social.instagram.engagement_rate || "";
+      }
+      if (social.youtube) {
+        document.getElementById("ob-yt-handle").value = social.youtube.handle || "";
+        document.getElementById("ob-yt-followers").value = social.youtube.followers || "";
+        document.getElementById("ob-yt-views").value = social.youtube.average_views || "";
+        document.getElementById("ob-yt-engagement").value = social.youtube.engagement_rate || "";
+      }
+      
+      const aud = creator.audience_metadata || {};
+      document.getElementById("ob-aud-location").value = aud.location || "";
+      if (aud.age_range) document.getElementById("ob-aud-age").value = aud.age_range;
+      if (aud.posting_frequency) document.getElementById("ob-posting-frequency").value = aud.posting_frequency;
+      const formats = aud.formats || [];
+      document.getElementById("ob-formats").value = formats.join(", ");
+      
+      const collab = creator.collab_metadata || {};
+      const targetBrands = collab.target_brands || [];
+      document.getElementById("ob-target-brands").value = targetBrands.join(", ");
+      if (collab.previous_experience !== undefined) {
+        document.getElementById("ob-collab-exp").value = collab.previous_experience ? "yes" : "no";
+        this.toggleCollabExamples(collab.previous_experience ? "yes" : "no");
+      }
+      document.getElementById("ob-collab-email").value = collab.contact_email || "";
+      document.getElementById("ob-collab-examples").value = collab.previous_campaigns || "";
       document.getElementById("ob-price-min").value = creator.pricing_min || "";
       document.getElementById("ob-price-prem").value = creator.pricing_premium || "";
-      
-      this.selectedLanguages = creator.languages ? [...creator.languages] : [];
-      this.selectedCategories = creator.categories ? [...creator.categories] : [];
+      document.getElementById("ob-portfolio").value = collab.portfolio_url || "";
+      document.getElementById("ob-mediakit").value = collab.media_kit_url || "";
     }
     
-    // Render Languages selector chips
-    const langContainer = document.getElementById("ob-lang-chips");
-    const languagesList = ["Hindi", "Marathi", "English", "Telugu", "Tamil", "Bengali", "Gujarati", "Punjabi"];
-    langContainer.innerHTML = languagesList.map(lang => {
-      const active = this.selectedLanguages.includes(lang) ? "active" : "";
-      return `
-        <span class="tag clickable ${active}" onclick="App.toggleLanguageChip(this, '${lang}')" style="font-size:13px; padding:8px 16px; cursor:pointer; user-select:none; border-radius:8px;">${lang}</span>
-      `;
-    }).join("");
+    // Bind change listener for experience dropdown
+    const collabExpEl = document.getElementById("ob-collab-exp");
+    if (collabExpEl) {
+      collabExpEl.onchange = (e) => this.toggleCollabExamples(e.target.value);
+    }
     
-    // Render Categories grid cards
-    const catContainer = document.getElementById("ob-category-cards");
-    const categoriesList = [
-      { id: "food", label: "Food", desc: "Traditional culinary walks & local recipes" },
-      { id: "travel", label: "Travel", desc: "Tier-2/3 tourism guides & explorations" },
-      { id: "fashion", label: "Fashion", desc: "Vernacular lookbooks & style" },
-      { id: "gaming", label: "Gaming", desc: "Mobile streams & local eSports vlogs" },
-      { id: "finance", label: "Finance", desc: "Saving tips & mutual funds in Hindi" },
-      { id: "beauty", label: "Beauty", desc: "Skincare routines & cosmetic guides" },
-      { id: "tech", label: "Technology", desc: "Unboxings & specs in local languages" },
-      { id: "fitness", label: "Fitness", desc: "Traditional home workout vlogs" }
-    ];
-    
-    catContainer.innerHTML = categoriesList.map(cat => {
-      const active = this.selectedCategories.includes(cat.id) ? "active-card" : "";
-      return `
-        <div class="col-6 luxury-card clickable-card ${active}" data-cat="${cat.id}" onclick="App.toggleCategoryCard(this, '${cat.id}')" style="padding:16px; text-align:left; cursor:pointer; user-select:none; box-sizing:border-box;">
-          <h4 style="margin: 0 0 6px 0; font-size:14px; color:#fff;">${cat.label}</h4>
-          <p class="view-subtitle" style="font-size:11px; margin:0; line-height:1.4;">${cat.desc}</p>
-        </div>
-      `;
-    }).join("");
-    
+    if (this.resumeAnalysisPolling) {
+      this.resumeAnalysisPolling = false;
+      this.showOnboardingStep(5);
+      
+      const reviewPanel = document.getElementById("ob-review-trigger-panel");
+      const procPanel = document.getElementById("ob-processing-panel");
+      const navBar = document.getElementById("ob-nav-bar");
+      const exitBtn = document.getElementById("ob-exit-btn");
+      
+      if (reviewPanel) reviewPanel.style.display = "none";
+      if (procPanel) procPanel.style.display = "block";
+      if (navBar) navBar.style.display = "none";
+      if (exitBtn) exitBtn.style.display = "none";
+      
+      const logsContainer = document.getElementById("ob-loader-steps");
+      if (logsContainer) logsContainer.innerHTML = "";
+      
+      const addLog = (text, status = "active") => {
+        document.querySelectorAll(".loader-step-row.active").forEach(el => {
+          el.classList.remove("active");
+          el.classList.add("completed");
+        });
+        const row = document.createElement("div");
+        row.className = `loader-step-row ${status}`;
+        row.innerHTML = `<span class="loader-step-icon"></span> <span>${text}</span>`;
+        if (logsContainer) logsContainer.appendChild(row);
+        const stepLabel = document.getElementById("ob-processing-step");
+        if (stepLabel) stepLabel.textContent = text;
+      };
+      
+      addLog("Resuming profile analysis check...");
+      
+      try {
+        await this.pollCreatorIntelligence(null, addLog);
+        addLog("Successfully enriched profile details!", "completed");
+        this.creatorProfileStatus = "Ready";
+        this.creatorAiStatus = "Completed";
+        
+        setTimeout(() => {
+          this.showToast("Profile score generated successfully!", "success");
+          this.renderNavigation();
+          this.switchSubview("creator-dashboard");
+        }, 1500);
+      } catch (err) {
+        this.showToast("Analysis failed: " + err.message, "error");
+        this.creatorAiStatus = "Failed";
+        this.renderNavigation();
+        this.switchSubview("complete-profile");
+      }
+      return;
+    }
+
     this.showOnboardingStep(1);
   },
 
-  toggleLanguageChip: function(el, lang) {
-    if (!App.selectedLanguages) App.selectedLanguages = [];
-    if (App.selectedLanguages.includes(lang)) {
-      App.selectedLanguages = App.selectedLanguages.filter(l => l !== lang);
-      el.classList.remove("active");
-    } else {
-      App.selectedLanguages.push(lang);
-      el.classList.add("active");
-    }
-  },
-
-  toggleCategoryCard: function(el, catId) {
-    if (!App.selectedCategories) App.selectedCategories = [];
-    if (App.selectedCategories.includes(catId)) {
-      App.selectedCategories = App.selectedCategories.filter(c => c !== catId);
-      el.classList.remove("active-card");
-    } else {
-      App.selectedCategories.push(catId);
-      el.classList.add("active-card");
+  toggleCollabExamples: function(val) {
+    const el = document.getElementById("group-ob-collab-examples");
+    if (el) {
+      el.style.display = val === "yes" ? "block" : "none";
     }
   },
 
@@ -2200,371 +3184,483 @@ window.App = {
     document.querySelectorAll(".wizard-step").forEach(el => el.style.display = "none");
     
     // Show current step
-    document.getElementById(`wstep-${stepNum}`).style.display = "block";
+    const stepEl = document.getElementById(`wstep-${stepNum}`);
+    if (stepEl) stepEl.style.display = "block";
     
     // Update subtitle text
     const subtitle = document.getElementById("wizard-subtitle");
     const stepsNames = [
-      "Welcome to CreatorLens",
-      "Verify Personal Details",
-      "Select Regional Dialects",
-      "Select Focus Categories",
-      "Connect Social Links",
-      "Enter Audience & Pricing Metrics",
-      "AI Sourcing Analysis",
-      "Compile Intelligence Profile"
+      "Creator Identity",
+      "Social Footprint",
+      "Audience & Content",
+      "Collaboration Settings",
+      "Review & Trigger Analysis"
     ];
     if (subtitle) {
-      subtitle.textContent = `Step ${stepNum} of 8: ${stepsNames[stepNum - 1]}`;
+      subtitle.textContent = `Step ${stepNum} of 5: ${stepsNames[stepNum - 1]}`;
     }
     
     // Update progress bar width
-    const pct = (stepNum / 8) * 100;
+    const pct = (stepNum / 5) * 100;
     const pbar = document.getElementById("onboarding-progress-bar");
     if (pbar) pbar.style.width = `${pct}%`;
     
     // Update navigation button visibilities
     const prevBtn = document.getElementById("ob-btn-prev");
     const nextBtn = document.getElementById("ob-btn-next");
+    const saveBtn = document.getElementById("ob-btn-save");
+    const exitBtn = document.getElementById("ob-exit-btn");
     
-    if (prevBtn) prevBtn.style.display = stepNum === 1 || stepNum === 7 ? "none" : "block";
+    if (prevBtn) prevBtn.style.display = stepNum === 1 ? "none" : "block";
+    if (saveBtn) saveBtn.style.display = stepNum === 5 ? "none" : "block";
+    if (exitBtn) exitBtn.style.display = "block";
     
-    if (stepNum === 7) {
-      if (nextBtn) nextBtn.style.display = "none";
-    } else {
-      if (nextBtn) nextBtn.style.display = "block";
-    }
-    
-    if (stepNum === 8) {
-      if (nextBtn) nextBtn.textContent = "Finish Onboarding →";
-    } else {
-      if (nextBtn) nextBtn.textContent = "Continue →";
+    if (nextBtn) {
+      if (stepNum === 5) {
+        nextBtn.style.display = "none";
+      } else {
+        nextBtn.style.display = "block";
+        nextBtn.textContent = "Continue →";
+      }
     }
     
     // Reset view scroll positions
     window.scrollTo(0, 0);
   },
 
-  nextOnboardingStep: function() {
-    if (this.onboardingStep === 2) {
-      // Validate step 2
-      const name = document.getElementById("ob-name").value;
-      if (!name.trim()) {
-        this.showToast("Please enter your full name.", "warning");
-        return;
+  collectOnboardingFields: function() {
+    const name = document.getElementById("ob-name").value.trim();
+    const avatar = document.getElementById("ob-avatar").value.trim();
+    const bio = document.getElementById("ob-bio").value.trim();
+    const city = document.getElementById("ob-city").value.trim();
+    const state = document.getElementById("ob-state").value.trim();
+    const languages = document.getElementById("ob-languages").value.split(",").map(s => s.trim()).filter(Boolean);
+    const categories = document.getElementById("ob-categories").value.split(",").map(s => s.trim()).filter(Boolean);
+
+    const social_links = {
+      instagram: {
+        handle: document.getElementById("ob-ig-handle").value.trim() || null,
+        followers: parseInt(document.getElementById("ob-ig-followers").value) || null,
+        average_views: parseInt(document.getElementById("ob-ig-views").value) || null,
+        engagement_rate: parseFloat(document.getElementById("ob-ig-engagement").value) || null,
+        is_connected: false,
+        metrics_source: document.getElementById("ob-ig-followers").value ? "manual" : null
+      },
+      youtube: {
+        handle: document.getElementById("ob-yt-handle").value.trim() || null,
+        followers: parseInt(document.getElementById("ob-yt-followers").value) || null,
+        average_views: parseInt(document.getElementById("ob-yt-views").value) || null,
+        engagement_rate: parseFloat(document.getElementById("ob-yt-engagement").value) || null,
+        is_connected: false,
+        metrics_source: document.getElementById("ob-yt-followers").value ? "manual" : null
+      }
+    };
+
+    const audience_metadata = {
+      location: document.getElementById("ob-aud-location").value.trim() || null,
+      age_range: document.getElementById("ob-aud-age").value || null,
+      posting_frequency: document.getElementById("ob-posting-frequency").value || null,
+      formats: document.getElementById("ob-formats").value.split(",").map(s => s.trim()).filter(Boolean)
+    };
+
+    const collab_metadata = {
+      target_brands: document.getElementById("ob-target-brands").value.split(",").map(s => s.trim()).filter(Boolean),
+      previous_experience: document.getElementById("ob-collab-exp").value === "yes",
+      contact_email: document.getElementById("ob-collab-email").value.trim() || null,
+      previous_campaigns: document.getElementById("ob-collab-examples").value.trim() || null,
+      portfolio_url: document.getElementById("ob-portfolio").value.trim() || null,
+      media_kit_url: document.getElementById("ob-mediakit").value.trim() || null
+    };
+
+    const minVal = parseInt(document.getElementById("ob-price-min").value);
+    const premVal = parseInt(document.getElementById("ob-price-prem").value);
+
+    let totalFollowers = 0;
+    let totalViews = 0;
+    let totalEng = 0;
+    let platformsCount = 0;
+
+    if (social_links.instagram.handle) {
+      totalFollowers += social_links.instagram.followers || 0;
+      totalViews += social_links.instagram.average_views || 0;
+      totalEng += social_links.instagram.engagement_rate || 0;
+      platformsCount++;
+    }
+    if (social_links.youtube.handle) {
+      totalFollowers += social_links.youtube.followers || 0;
+      totalViews += social_links.youtube.average_views || 0;
+      totalEng += social_links.youtube.engagement_rate || 0;
+      platformsCount++;
+    }
+
+    return {
+      full_name: name || null,
+      avatar_url: avatar || null,
+      bio: bio || null,
+      city: city || null,
+      state: state || null,
+      languages: languages,
+      categories: categories,
+      social_links: social_links,
+      audience_metadata: audience_metadata,
+      collab_metadata: collab_metadata,
+      followers_count: totalFollowers,
+      average_views: totalViews,
+      engagement_rate: platformsCount > 0 ? parseFloat((totalEng / platformsCount).toFixed(2)) : 0,
+      pricing_min: isNaN(minVal) ? 0 : minVal,
+      pricing_premium: isNaN(premVal) ? 0 : premVal,
+      regions: [city, state].filter(Boolean)
+    };
+  },
+
+  saveOnboardingStepDraft: async function(stepNum) {
+    const fields = this.collectOnboardingFields();
+    
+    // Step validation
+    if (stepNum === 1) {
+      if (!fields.full_name || !fields.avatar_url || !fields.bio || !fields.city || !fields.state || fields.languages.length === 0 || fields.categories.length === 0) {
+        this.showToast("Please fill in all mandatory fields (*) on this step.", "warning");
+        return false;
       }
     }
-    
-    if (this.onboardingStep === 3) {
-      if (this.selectedLanguages.length === 0) {
-        this.showToast("Please select at least one language.", "warning");
-        return;
+    if (stepNum === 2) {
+      const hasIg = fields.social_links.instagram.handle;
+      const hasYt = fields.social_links.youtube.handle;
+      if (!hasIg && !hasYt) {
+        this.showToast("At least one social profile (Instagram or YouTube) is mandatory.", "warning");
+        return false;
       }
     }
-    
-    if (this.onboardingStep === 4) {
-      if (this.selectedCategories.length === 0) {
-        this.showToast("Please select at least one category.", "warning");
-        return;
+    if (stepNum === 3) {
+      if (!fields.audience_metadata.location || !fields.audience_metadata.posting_frequency || fields.audience_metadata.formats.length === 0) {
+        this.showToast("Please fill in all mandatory fields (*) on this step.", "warning");
+        return false;
       }
     }
-    
-    if (this.onboardingStep === 6) {
-      // Validate pricing min / max
-      const min = document.getElementById("ob-price-min").value;
-      const prem = document.getElementById("ob-price-prem").value;
-      if (!min || !prem) {
-        this.showToast("Please enter your pricing bounds.", "warning");
-        return;
+    if (stepNum === 4) {
+      if (fields.collab_metadata.target_brands.length === 0) {
+        this.showToast("Please fill in all mandatory fields (*) on this step.", "warning");
+        return false;
       }
     }
+
+    // Save profile to database/mock DB
+    try {
+      await window.DB.saveProfile(this.currentUser.id, "creator", fields);
+    } catch (e) {
+      console.error("Failed to save step draft:", e);
+    }
+    return true;
+  },
+
+  saveOnboardingDraft: async function() {
+    const fields = this.collectOnboardingFields();
+    try {
+      this.showToast("Saving draft...", "info");
+      await window.DB.saveProfile(this.currentUser.id, "creator", fields);
+      this.showToast("Draft saved successfully! You can resume anytime.", "success");
+      this.switchSubview("complete-profile");
+    } catch (e) {
+      this.showToast("Failed to save draft: " + e.message, "error");
+    }
+  },
+
+  syncMockSocialMetrics: function() {
+    const igHandle = document.getElementById("ob-ig-handle").value.trim();
+    const ytHandle = document.getElementById("ob-yt-handle").value.trim();
     
-    if (this.onboardingStep < 6) {
+    if (!igHandle && !ytHandle) {
+      this.showToast("Please enter at least one handle (Instagram or YouTube) to sync metrics.", "warning");
+      return;
+    }
+    
+    this.showToast("Connecting and fetching API metrics...", "info");
+    
+    setTimeout(() => {
+      if (igHandle) {
+        document.getElementById("ob-ig-followers").value = 18400;
+        document.getElementById("ob-ig-views").value = 4500;
+        document.getElementById("ob-ig-engagement").value = 5.25;
+      }
+      if (ytHandle) {
+        document.getElementById("ob-yt-followers").value = 32000;
+        document.getElementById("ob-yt-views").value = 14500;
+        document.getElementById("ob-yt-engagement").value = 6.80;
+      }
+      this.showToast("Metrics connection completed successfully!", "success");
+    }, 1500);
+  },
+
+  triggerCreatorIntelligence: async function() {
+    // 1. Save final draft of onboarding data
+    const validated = await this.saveOnboardingStepDraft(4);
+    if (!validated) return;
+
+    // Show processing panels
+    const reviewPanel = document.getElementById("ob-review-trigger-panel");
+    const procPanel = document.getElementById("ob-processing-panel");
+    const navBar = document.getElementById("ob-nav-bar");
+    const exitBtn = document.getElementById("ob-exit-btn");
+    
+    if (reviewPanel) reviewPanel.style.display = "none";
+    if (procPanel) procPanel.style.display = "block";
+    if (navBar) navBar.style.display = "none";
+    if (exitBtn) exitBtn.style.display = "none";
+
+    const stepLabel = document.getElementById("ob-processing-step");
+    const logsContainer = document.getElementById("ob-loader-steps");
+    logsContainer.innerHTML = "";
+
+    const addLog = (text, status = "active") => {
+      document.querySelectorAll(".loader-step-row.active").forEach(el => {
+        el.classList.remove("active");
+        el.classList.add("completed");
+      });
+      const row = document.createElement("div");
+      row.className = `loader-step-row ${status}`;
+      row.innerHTML = `<span class="loader-step-icon"></span> <span>${text}</span>`;
+      logsContainer.appendChild(row);
+      if (stepLabel) stepLabel.textContent = text;
+    };
+
+    addLog("Validating creator profile completeness...");
+
+    try {
+      let data;
+      if (window.DB.isLive()) {
+        const response = await fetch(`${window.N8N.backendUrl}/creators/enrich`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ creator_id: this.currentUser.id })
+        });
+        if (!response.ok) {
+          const errData = await response.json();
+          throw new Error(errData.message || response.statusText);
+        }
+        data = await response.json();
+      } else {
+        data = await window.N8N.triggerProfileEnrichment(this.currentUser.id);
+      }
+
+      addLog("Analyzing connected social footprints...");
+      
+      const job_id = data && data.data ? data.data.job_id : null;
+      if (window.DB.isLive() && job_id) {
+        await this.pollCreatorIntelligence(job_id, addLog);
+      } else {
+        await new Promise(r => setTimeout(r, 2000));
+        addLog("Computing five-axis score vectors...");
+        await new Promise(r => setTimeout(r, 2000));
+      }
+
+      addLog("Generating suggestions and recommendations...");
+      await new Promise(r => setTimeout(r, 1000));
+
+      this.showToast("Creator Intelligence compiled successfully!", "success");
+      
+      this.creatorProfileStatus = 'Ready';
+      this.creatorAiStatus = 'Completed';
+      
+      this.renderNavigation();
+      window.location.hash = "#/creator-dashboard";
+    } catch (err) {
+      console.error("Creator enrichment failed:", err);
+      this.showToast(err.message, "error");
+      
+      if (reviewPanel) reviewPanel.style.display = "block";
+      if (procPanel) procPanel.style.display = "none";
+      if (navBar) navBar.style.display = "flex";
+      if (exitBtn) exitBtn.style.display = "block";
+    }
+  },
+
+  pollCreatorIntelligence: async function(job_id, addLog) {
+    const startTime = Date.now();
+    const timeout = 60000;
+    let currentStep = 1;
+
+    while (Date.now() - startTime < timeout) {
+      await new Promise(r => setTimeout(r, 2000));
+      
+      const response = await fetch(`${window.N8N.backendUrl}/creators/profile/${this.currentUser.id}`);
+      if (!response.ok) {
+        throw new Error("Failed to poll profile status updates.");
+      }
+      const profile = await response.json();
+      
+      if (profile.ai_status === "Completed") {
+        return;
+      } else if (profile.ai_status === "Failed") {
+        throw new Error("Creator Intelligence score generation failed.");
+      }
+      
+      const elapsed = Date.now() - startTime;
+      if (elapsed > 10000 && currentStep === 2) {
+        currentStep = 3;
+        addLog("Computing five-axis score vectors...");
+      } else if (elapsed > 4000 && currentStep === 1) {
+        currentStep = 2;
+        addLog("Analyzing connected social footprints...");
+      }
+    }
+    throw new Error("Creator Intelligence score generation timed out.");
+  },
+
+  nextOnboardingStep: async function() {
+    const validated = await this.saveOnboardingStepDraft(this.onboardingStep);
+    if (!validated) return;
+
+    if (this.onboardingStep < 5) {
       this.showOnboardingStep(this.onboardingStep + 1);
-    } else if (this.onboardingStep === 6) {
-      // Transition to AI Analysis Loader (Step 7)
-      this.showOnboardingStep(7);
-      this.runAiOnboardingAnalysis();
-    } else if (this.onboardingStep === 8) {
-      // Finish Onboarding
-      this.finishCreatorOnboarding();
     }
   },
 
   prevOnboardingStep: function() {
-    if (this.onboardingStep > 1 && this.onboardingStep !== 7) {
+    if (this.onboardingStep > 1) {
       this.showOnboardingStep(this.onboardingStep - 1);
-    }
-  },
-
-  runAiOnboardingAnalysis: function() {
-    const stepsData = [
-      "WF-01: Connect profile data brokers",
-      "WF-02: Parse bio & vernacular dialect parameters",
-      "WF-03: Assess regional audience trust metrics",
-      "Compiling final Intelligence Score..."
-    ];
-    
-    const container = document.getElementById("ob-loader-steps");
-    container.innerHTML = "";
-    
-    let idx = 0;
-    
-    const runStep = () => {
-      if (idx > 0) {
-        const prev = document.getElementById(`ob-step-row-${idx - 1}`);
-        if (prev) {
-          prev.classList.remove("active");
-          prev.classList.add("completed");
-        }
-      }
-      
-      if (idx < stepsData.length) {
-        const row = document.createElement("div");
-        row.className = "loader-step-row active";
-        row.id = `ob-step-row-${idx}`;
-        row.innerHTML = `
-          <span class="loader-step-icon"></span>
-          <span>${stepsData[idx]}</span>
-        `;
-        container.appendChild(row);
-        
-        idx++;
-        setTimeout(runStep, 800 + Math.random() * 400);
-      } else {
-        setTimeout(() => {
-          // Transition to Step 8
-          this.showOnboardingStep(8);
-          this.compileOnboardingSummary();
-        }, 600);
-      }
-    };
-    
-    runStep();
-  },
-
-  compileOnboardingSummary: function() {
-    // Generate simulated CIS Score
-    const followers = parseInt(document.getElementById("ob-followers").value) || 50000;
-    const engagement = parseFloat(document.getElementById("ob-engagement").value) || 5.0;
-    
-    // Weight calculation
-    let baseScore = 75;
-    if (followers > 100000) baseScore += 8;
-    else if (followers > 50000) baseScore += 5;
-    
-    if (engagement > 8.0) baseScore += 10;
-    else if (engagement > 5.0) baseScore += 6;
-    
-    const finalScore = Math.min(98, baseScore + Math.floor(Math.random() * 5));
-    
-    const overallScoreEl = document.getElementById("ob-score-overall");
-    if (overallScoreEl) overallScoreEl.textContent = finalScore;
-    
-    // Draw SVG radar chart preview for Step 8
-    const mockScores = {
-      intelligence_score: finalScore,
-      engagement_trust: Math.min(99, Math.round(finalScore * 1.05)),
-      regional_affinity: Math.min(99, Math.round(finalScore * 0.98)),
-      dialect_accuracy: Math.min(99, Math.round(finalScore * 1.02)),
-      readiness: Math.min(99, Math.round(finalScore * 0.95))
-    };
-    
-    window.UI.renderRadarChart("ob-radar-chart", mockScores);
-    
-    // Temporarily cache compiled scores to write on Finish
-    this.tempCompiledScores = mockScores;
-  },
-
-  finishCreatorOnboarding: async function() {
-    this.showToast("Finalizing onboarding profiles...", "info");
-    
-    try {
-      // Build updated profile object
-      const name = document.getElementById("ob-name").value;
-      const avatar = document.getElementById("ob-avatar").value || "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150";
-      const bio = document.getElementById("ob-bio").value;
-      const city = document.getElementById("ob-city").value || "Indore";
-      const state = document.getElementById("ob-state").value || "Madhya Pradesh";
-      
-      const followers = parseInt(document.getElementById("ob-followers").value) || 50000;
-      const views = parseInt(document.getElementById("ob-views").value) || 10000;
-      const engagement = parseFloat(document.getElementById("ob-engagement").value) || 5.0;
-      const minPrice = parseInt(document.getElementById("ob-price-min").value) || 10000;
-      const premPrice = parseInt(document.getElementById("ob-price-prem").value) || 20000;
-      
-      const creators = JSON.parse(localStorage.getItem("cl_creators") || "[]");
-      const idx = creators.findIndex(c => c.id === this.currentUser.id);
-      const existingCode = (creators[idx] && creators[idx].creator_code) || ("CR_" + String(creators.length + 5).padStart(3, "0"));
-      
-      const updatedProfile = {
-        id: this.currentUser.id,
-        creator_code: existingCode,
-        full_name: name,
-        avatar_url: avatar,
-        bio: bio,
-        categories: this.selectedCategories,
-        languages: this.selectedLanguages,
-        regions: [city, state],
-        followers_count: followers,
-        average_views: views,
-        engagement_rate: engagement,
-        pricing_min: minPrice,
-        pricing_premium: premPrice,
-        profile_completeness: 100,
-        ai_status: 'Completed',
-        profile_summary: bio
-      };
-      
-      // Update in Local Storage
-      if (idx !== -1) {
-        creators[idx] = updatedProfile;
-      } else {
-        creators.push(updatedProfile);
-      }
-      localStorage.setItem("cl_creators", JSON.stringify(creators));
-      
-      if (window.DB.isLive()) {
-        await window.DB.saveProfile(this.currentUser.id, "creator", updatedProfile);
-        try {
-          await window.N8N.triggerProfileEnrichment(this.currentUser.id);
-        } catch (e) {
-          console.warn("Failed to run live profile enrichment trigger on onboarding:", e);
-        }
-      }
-      
-      // Save compiled scores
-      const scores = JSON.parse(localStorage.getItem("cl_scores") || "{}");
-      scores[this.currentUser.id] = this.tempCompiledScores || {
-        intelligence_score: 85,
-        engagement_trust: 88,
-        regional_affinity: 80,
-        dialect_accuracy: 85,
-        readiness: 90
-      };
-      localStorage.setItem("cl_scores", JSON.stringify(scores));
-      
-      // Seed suggestions dynamically based on profile strengths
-      const suggestions = JSON.parse(localStorage.getItem("cl_suggestions") || "{}");
-      suggestions[this.currentUser.id] = [
-        { suggestion_text: "Verify audience city breakdown details.", expected_improvement: 4, impact_level: "high" },
-        { suggestion_text: "Publish secondary YouTube video short in Marathi dialect.", expected_improvement: 6, impact_level: "medium" },
-        { suggestion_text: "Fill brand safety verification certifications.", expected_improvement: 3, impact_level: "low" }
-      ];
-      localStorage.setItem("cl_suggestions", JSON.stringify(suggestions));
-      
-      setTimeout(() => {
-        this.showToast("Creator onboarding complete!", "success");
-        // Redirect to dashboard
-        this.switchSubview("creator-dashboard");
-      }, 1000);
-      
-    } catch (err) {
-      this.showToast(err.message, "error");
     }
   },
 
   /* ==================== CREATOR CAMPAIGN DISCOVERY ==================== */
   loadCampaignDiscoveryList: async function() {
-    const grid = document.getElementById("discovery-campaigns-grid");
-    if (!grid) return;
-    
-    const campaigns = JSON.parse(localStorage.getItem("cl_campaigns") || "[]");
-    const creator = await window.DB.getProfile(this.currentUser.id, "creator");
-    const catFilter = document.getElementById("disc-filter-category").value;
-    const budFilter = document.getElementById("disc-filter-budget").value;
-    
-    const collabs = JSON.parse(localStorage.getItem("cl_collabs") || "[]");
-    
-    let filtered = campaigns.filter(c => c.status === "active");
-    if (catFilter !== "all") {
-      filtered = filtered.filter(c => c.category === catFilter);
-    }
-    if (budFilter !== "all") {
-      filtered = filtered.filter(c => c.budget >= parseInt(budFilter));
-    }
-    
-    if (filtered.length === 0) {
-      grid.innerHTML = `
-        <div class="col-12 luxury-card" style="text-align: center; padding: 40px; border-style: dashed; grid-column: span 12;">
-          <p class="view-subtitle">No sponsorships match the current filters.</p>
-        </div>
-      `;
-      return;
-    }
-    
-    grid.innerHTML = filtered.map(camp => {
-      let matchScore = 65;
-      if (creator) {
-        if (creator.categories && creator.categories.includes(camp.category)) matchScore += 12;
-        if (creator.languages && creator.languages.includes(camp.language)) matchScore += 10;
-        if (creator.regions && creator.regions.some(r => r.toLowerCase().includes(camp.region.toLowerCase()))) matchScore += 10;
+    try {
+      if (!this.currentUser) return;
+      const grid = document.getElementById("discovery-campaigns-grid");
+      if (!grid) return;
+      
+      const creator = await window.DB.getProfile(this.currentUser.id, "creator");
+      const catFilter = document.getElementById("disc-filter-category").value;
+      const budFilter = document.getElementById("disc-filter-budget").value;
+      
+      let campaigns = [];
+      let collabs = [];
+      
+      if (window.DB.isLive()) {
+        campaigns = await window.DB.getAllCampaigns() || [];
+        if (creator) {
+          collabs = await window.DB.getCollabsForCreator(creator.id) || [];
+        }
+      } else {
+        campaigns = JSON.parse(localStorage.getItem("cl_campaigns") || "[]");
+        collabs = JSON.parse(localStorage.getItem("cl_collabs") || "[]");
       }
-      matchScore = Math.min(98, matchScore);
       
-      const isApplied = collabs.some(col => col.campaign_id === camp.id && col.creator_id === this.currentUser.id);
-      const btnText = isApplied ? "Applied ✓" : "Apply to Campaign";
-      const btnClass = isApplied ? "btn-secondary" : "btn-primary";
-      const btnAttr = isApplied ? "disabled" : "";
+      let filtered = campaigns.filter(c => c.status === "active");
+      if (catFilter !== "all") {
+        filtered = filtered.filter(c => c.category === catFilter);
+      }
+      if (budFilter !== "all") {
+        filtered = filtered.filter(c => c.budget >= parseInt(budFilter));
+      }
       
-      return `
-        <div class="col-4 luxury-card" style="display:flex; flex-direction:column; justify-content:space-between; padding:20px; box-sizing:border-box;">
-          <div>
-            <div style="display:flex; justify-content:space-between; align-items:start; margin-bottom:12px;">
-              <span class="tag tag-indigo" style="font-size:9px;">${camp.category.toUpperCase()}</span>
-              <span style="font-weight:700; color:var(--color-primary-cyan); font-size:12px;">${matchScore}% Match</span>
-            </div>
-            <h3 style="font-size:15px; font-weight:600; color:#fff; margin:0 0 6px 0;">${camp.title}</h3>
-            <p class="view-subtitle" style="font-size:11px; line-height:1.5; color:#94A3B8; margin-bottom:14px; min-height:48px;">${camp.objective}</p>
-            
-            <div style="display:flex; flex-direction:column; gap:6px; margin-bottom:16px; border-top:1px solid rgba(255,255,255,0.05); padding-top:10px;">
-              <div style="display:flex; justify-content:space-between; font-size:11px;">
-                <span style="color:var(--color-text-muted);">BUDGET</span>
-                <span style="color:#fff; font-weight:600;">₹${camp.budget.toLocaleString('en-IN')}</span>
-              </div>
-              <div style="display:flex; justify-content:space-between; font-size:11px;">
-                <span style="color:var(--color-text-muted);">REGION TARGET</span>
-                <span style="color:#fff; font-weight:600;">${camp.region}</span>
-              </div>
-              <div style="display:flex; justify-content:space-between; font-size:11px;">
-                <span style="color:var(--color-text-muted);">LANGUAGE</span>
-                <span style="color:#fff; font-weight:600;">${camp.language}</span>
-              </div>
-            </div>
+      if (filtered.length === 0) {
+        grid.innerHTML = `
+          <div class="col-12 luxury-card" style="text-align: center; padding: 40px; border-style: dashed; grid-column: span 12;">
+            <p class="view-subtitle">No sponsorships match the current filters.</p>
           </div>
-          
-          <button class="btn ${btnClass}" style="width:100%; font-size:12px;" ${btnAttr} onclick="App.applyToCampaign('${camp.id}', ${matchScore})">
-            ${btnText}
-          </button>
-        </div>
-      `;
-    }).join("");
+        `;
+        return;
+      }
+      
+      grid.innerHTML = filtered.map(camp => {
+        let matchScore = 65;
+        if (creator) {
+          if (creator.categories && creator.categories.includes(camp.category)) matchScore += 12;
+          if (creator.languages && creator.languages.includes(camp.language)) matchScore += 10;
+          if (creator.regions && creator.regions.some(r => r.toLowerCase().includes(camp.region.toLowerCase()))) matchScore += 10;
+        }
+        matchScore = Math.min(98, matchScore);
+        
+        const isApplied = collabs.some(col => col.campaign_id === camp.id && col.creator_id === this.currentUser.id);
+        const btnText = isApplied ? "Applied ✓" : "Apply to Campaign";
+        const btnClass = isApplied ? "btn-secondary" : "btn-primary";
+        const btnAttr = isApplied ? "disabled" : "";
+        
+        return `
+          <div class="col-4 luxury-card" style="display:flex; flex-direction:column; justify-content:space-between; padding:20px; box-sizing:border-box;">
+            <div>
+              <div style="display:flex; justify-content:space-between; align-items:start; margin-bottom:12px;">
+                <span class="tag tag-indigo" style="font-size:9px;">${camp.category.toUpperCase()}</span>
+                <span style="font-weight:700; color:var(--color-primary-cyan); font-size:12px;">${matchScore}% Match</span>
+              </div>
+              <h3 style="font-size:15px; font-weight:600; color:#fff; margin:0 0 6px 0;">${camp.title}</h3>
+              <p class="view-subtitle" style="font-size:11px; line-height:1.5; color:#94A3B8; margin-bottom:14px; min-height:48px;">${camp.objective}</p>
+              
+              <div style="display:flex; flex-direction:column; gap:6px; margin-bottom:16px; border-top:1px solid rgba(255,255,255,0.05); padding-top:10px;">
+                <div style="display:flex; justify-content:space-between; font-size:11px;">
+                  <span style="color:var(--color-text-muted);">BUDGET</span>
+                  <span style="color:#fff; font-weight:600;">₹${camp.budget.toLocaleString('en-IN')}</span>
+                </div>
+                <div style="display:flex; justify-content:space-between; font-size:11px;">
+                  <span style="color:var(--color-text-muted);">REGION TARGET</span>
+                  <span style="color:#fff; font-weight:600;">${camp.region}</span>
+                </div>
+                <div style="display:flex; justify-content:space-between; font-size:11px;">
+                  <span style="color:var(--color-text-muted);">LANGUAGE</span>
+                  <span style="color:#fff; font-weight:600;">${camp.language}</span>
+                </div>
+              </div>
+            </div>
+            
+            <button class="btn ${btnClass}" style="width:100%; font-size:12px;" ${btnAttr} onclick="App.applyToCampaign('${camp.id}', ${matchScore})">
+              ${btnText}
+            </button>
+          </div>
+        `;
+      }).join("");
+    } catch (e) {
+      this.showToast(e.message, "error");
+    }
   },
 
-  applyToCampaign: function(campId, matchScore) {
+  applyToCampaign: async function(campId, matchScore) {
     this.showToast("Submitting sponsorship request...", "info");
     
-    setTimeout(() => {
-      const collabs = JSON.parse(localStorage.getItem("cl_collabs") || "[]");
-      collabs.push({
-        id: "col-" + Math.floor(Math.random()*10000),
+    try {
+      let camp;
+      if (window.DB.isLive()) {
+        const campaigns = await window.DB.getAllCampaigns() || [];
+        camp = campaigns.find(c => c.id === campId);
+      } else {
+        const campaigns = JSON.parse(localStorage.getItem("cl_campaigns") || "[]");
+        camp = campaigns.find(c => c.id === campId);
+      }
+      
+      if (!camp) throw new Error("Sponsorship campaign not found.");
+
+      const requestPayload = {
         campaign_id: campId,
         creator_id: this.currentUser.id,
-        match_score: matchScore,
-        status: "pending",
-        created_at: new Date().toISOString()
-      });
-      localStorage.setItem("cl_collabs", JSON.stringify(collabs));
+        brand_id: camp.brand_id,
+        suggested_price: camp.budget,
+        price_justification: `AI matched application at ${matchScore}% match score.`,
+        initiated_by: "creator"
+      };
+
+      if (window.DB.isLive()) {
+        await window.DB.saveCollabRequest(requestPayload);
+      } else {
+        const collabs = JSON.parse(localStorage.getItem("cl_collabs") || "[]");
+        collabs.push({
+          id: "col-" + Math.floor(Math.random()*10000),
+          ...requestPayload,
+          status: "pending",
+          created_at: new Date().toISOString()
+        });
+        localStorage.setItem("cl_collabs", JSON.stringify(collabs));
+      }
       
       this.showToast("Applied successfully! Review in progress.", "success");
-      this.loadCampaignDiscoveryList();
+      await this.loadCampaignDiscoveryList();
       
       this.addSystemNotification(
-        "Campaign Application",
-        `You have successfully applied to the campaign of ID: ${campId}. Status: Pending review.`,
+        "Campaign Application Submitted",
+        `You have successfully applied to "${camp.title}". Status: Under review.`,
         "info"
       );
-    }, 1200);
+    } catch (err) {
+      this.showToast(`Application failed: ${err.message}`, "error");
+    }
   },
 
   addSystemNotification: function(title, message, type = "info") {
@@ -2650,11 +3746,31 @@ window.App = {
     document.getElementById("pmg-name").value = creator.full_name || "";
     document.getElementById("pmg-avatar").value = creator.avatar_url || "";
     document.getElementById("pmg-bio").value = creator.bio || "";
-    document.getElementById("pmg-ig").value = creator.social_ig || "";
-    document.getElementById("pmg-yt").value = creator.social_yt || "";
+    
+    // Parse social links correctly
+    const social = creator.social_links || {};
+    document.getElementById("pmg-ig").value = (social.instagram && social.instagram.handle) ? social.instagram.handle : (creator.social_ig || "");
+    document.getElementById("pmg-yt").value = (social.youtube && social.youtube.handle) ? social.youtube.handle : (creator.social_yt || "");
     
     const scores = await window.DB.getCreatorScores(creator.id);
     document.getElementById("pmg-score-value").textContent = scores ? scores.intelligence_score : "--";
+
+    const badge = document.getElementById("pmg-status-badge");
+    if (badge) {
+      if (creator.ai_status === "Completed") {
+        badge.className = "tag tag-green pulse-badge-green";
+        badge.textContent = "AI Enriched Profile";
+      } else if (creator.ai_status === "Processing") {
+        badge.className = "tag tag-blue pulse-badge-blue";
+        badge.textContent = "Processing...";
+      } else if (creator.ai_status === "Failed") {
+        badge.className = "tag tag-red";
+        badge.textContent = "Enrichment Failed";
+      } else {
+        badge.className = "tag tag-gray";
+        badge.textContent = "Unenriched";
+      }
+    }
   },
 
   saveProfileMgmtDetails: async function(e) {
@@ -2662,23 +3778,57 @@ window.App = {
     this.showToast("Saving details...", "info");
     
     try {
+      const name = document.getElementById("pmg-name").value.trim();
+      const avatar = document.getElementById("pmg-avatar").value.trim();
+      const bio = document.getElementById("pmg-bio").value.trim();
+      const igHandle = document.getElementById("pmg-ig").value.trim();
+      const ytHandle = document.getElementById("pmg-yt").value.trim();
+
+      const currentProfile = await window.DB.getProfile(this.currentUser.id, "creator");
+      const socialLinks = currentProfile.social_links || {};
+      
+      if (!socialLinks.instagram) socialLinks.instagram = {};
+      socialLinks.instagram.handle = igHandle || null;
+
+      if (!socialLinks.youtube) socialLinks.youtube = {};
+      socialLinks.youtube.handle = ytHandle || null;
+
+      const profileData = {
+        full_name: name,
+        avatar_url: avatar,
+        bio: bio,
+        social_links: socialLinks,
+        social_ig: igHandle,
+        social_yt: ytHandle
+      };
+
+      await window.DB.saveProfile(this.currentUser.id, "creator", profileData);
+      
+      // Update local storage for mock fallback compatibility
       const creators = JSON.parse(localStorage.getItem("cl_creators") || "[]");
       const idx = creators.findIndex(c => c.id === this.currentUser.id);
       if (idx !== -1) {
-        creators[idx].full_name = document.getElementById("pmg-name").value;
-        creators[idx].avatar_url = document.getElementById("pmg-avatar").value;
-        creators[idx].bio = document.getElementById("pmg-bio").value;
-        creators[idx].social_ig = document.getElementById("pmg-ig").value;
-        creators[idx].social_yt = document.getElementById("pmg-yt").value;
+        creators[idx] = { ...creators[idx], ...profileData };
         localStorage.setItem("cl_creators", JSON.stringify(creators));
       }
+
       this.showToast("Profile details saved successfully!", "success");
+      
+      await this.loadProfileMgmtDetails();
+      
+      // Reload profile statuses and refresh the sidebar locks
+      const profile = await window.DB.getProfile(this.currentUser.id, "creator");
+      if (profile) {
+        this.creatorProfileStatus = profile.profile_status || 'Incomplete';
+        this.creatorAiStatus = profile.ai_status || 'Not Started';
+      }
+      this.renderNavigation();
     } catch(err) {
       this.showToast(err.message, "error");
     }
   },
 
-  triggerCreatorReanalysis: function() {
+  triggerCreatorReanalysis: async function() {
     const modal = document.getElementById("modal-pipeline-progress");
     const steps = [
       { id: "qstep-1", label: "Step 1: Scrape Profile Details", text: "Pulling bio parameters..." },
@@ -2688,62 +3838,106 @@ window.App = {
     
     document.getElementById("pipeline-title").textContent = "Re-analyzing Creator Profile...";
     modal.classList.add("active");
-    
-    steps.forEach((s) => {
-      const stepEl = document.getElementById(s.id);
+
+    const updateStepUI = (stepId, status, label) => {
+      const stepEl = document.getElementById(stepId);
       if (stepEl) {
-        stepEl.className = "queue-step";
-        stepEl.querySelector(".step-name").textContent = s.label;
-        stepEl.querySelector(".step-status").textContent = "Pending";
-      }
-    });
-    
-    let idx = 0;
-    const nextStep = () => {
-      if (idx > 0) {
-        const prev = document.getElementById(steps[idx - 1].id);
-        if (prev) {
-          prev.className = "queue-step success";
-          prev.querySelector(".step-status").textContent = "Completed";
-        }
-      }
-      
-      if (idx < steps.length) {
-        const current = document.getElementById(steps[idx].id);
-        if (current) {
-          current.className = "queue-step active";
-          current.querySelector(".step-status").textContent = "Analyzing...";
-        }
-        idx++;
-        setTimeout(nextStep, 1000);
-      } else {
-        setTimeout(async () => {
-          modal.classList.remove("active");
-          
-          const scores = JSON.parse(localStorage.getItem("cl_scores") || "{}");
-          const userScores = scores[this.currentUser.id] || {
-            intelligence_score: 85,
-            engagement_trust: 88,
-            regional_affinity: 80,
-            dialect_accuracy: 85,
-            readiness: 90
-          };
-          userScores.intelligence_score = Math.min(99, userScores.intelligence_score + 1);
-          scores[this.currentUser.id] = userScores;
-          localStorage.setItem("cl_scores", JSON.stringify(scores));
-          
-          this.showToast("AI Profile Re-analysis complete!", "success");
-          this.loadProfileMgmtDetails();
-          this.addSystemNotification(
-            "AI Re-analysis Complete",
-            `Your profile scoring has been optimized. New CIS Score is: ${userScores.intelligence_score}.`,
-            "success"
-          );
-        }, 800);
+        stepEl.className = `queue-step ${status === 'Completed' ? 'success' : status === 'Analyzing...' ? 'active' : ''}`;
+        stepEl.querySelector(".step-name").textContent = label;
+        stepEl.querySelector(".step-status").textContent = status;
       }
     };
-    
-    nextStep();
+
+    if (window.DB.isLive()) {
+      try {
+        updateStepUI("qstep-1", "Analyzing...", "Step 1: Scrape Profile Details");
+        updateStepUI("qstep-2", "Pending", "Step 2: Parse Dialect Affinity");
+        updateStepUI("qstep-3", "Pending", "Step 3: Render Intelligence Score");
+
+        await window.N8N.triggerProfileEnrichment(this.currentUser.id, (step, msg) => {
+          console.log(`[Reanalysis Step] ${step}: ${msg}`);
+          if (step === "wf01") {
+            updateStepUI("qstep-1", "Completed", "Step 1: Scrape Profile Details");
+            updateStepUI("qstep-2", "Analyzing...", "Step 2: Parse Dialect Affinity");
+          } else if (step === "wf02" || step === "wf03") {
+            updateStepUI("qstep-2", "Completed", "Step 2: Parse Dialect Affinity");
+            updateStepUI("qstep-3", "Analyzing...", "Step 3: Render Intelligence Score");
+          } else if (step === "complete") {
+            updateStepUI("qstep-3", "Completed", "Step 3: Render Intelligence Score");
+          }
+        });
+        
+        modal.classList.remove("active");
+        this.showToast("AI Profile Re-analysis complete!", "success");
+        await this.loadProfileMgmtDetails();
+        
+        if (this.activeSubview === "creator-dashboard") {
+          await this.loadCreatorDashboard();
+        } else if (this.activeSubview === "creator-intelligence") {
+          await this.loadCreatorIntelligence();
+        }
+        
+      } catch (err) {
+        modal.classList.remove("active");
+        this.showToast(`AI Re-analysis failed: ${err.message}`, "error");
+      }
+    } else {
+      steps.forEach((s) => {
+        const stepEl = document.getElementById(s.id);
+        if (stepEl) {
+          stepEl.className = "queue-step";
+          stepEl.querySelector(".step-name").textContent = s.label;
+          stepEl.querySelector(".step-status").textContent = "Pending";
+        }
+      });
+      
+      let idx = 0;
+      const nextStep = () => {
+        if (idx > 0) {
+          const prev = document.getElementById(steps[idx - 1].id);
+          if (prev) {
+            prev.className = "queue-step success";
+            prev.querySelector(".step-status").textContent = "Completed";
+          }
+        }
+        
+        if (idx < steps.length) {
+          const current = document.getElementById(steps[idx].id);
+          if (current) {
+            current.className = "queue-step active";
+            current.querySelector(".step-status").textContent = "Analyzing...";
+          }
+          idx++;
+          setTimeout(nextStep, 1000);
+        } else {
+          setTimeout(async () => {
+            modal.classList.remove("active");
+            
+            const scores = JSON.parse(localStorage.getItem("cl_scores") || "{}");
+            const userScores = scores[this.currentUser.id] || {
+              intelligence_score: 85,
+              engagement_trust: 88,
+              regional_affinity: 80,
+              dialect_accuracy: 85,
+              readiness: 90
+            };
+            userScores.intelligence_score = Math.min(99, userScores.intelligence_score + 1);
+            scores[this.currentUser.id] = userScores;
+            localStorage.setItem("cl_scores", JSON.stringify(scores));
+            
+            this.showToast("AI Profile Re-analysis complete!", "success");
+            this.loadProfileMgmtDetails();
+            this.addSystemNotification(
+              "AI Re-analysis Complete",
+              `Your profile scoring has been optimized. New CIS Score is: ${userScores.intelligence_score}.`,
+              "success"
+            );
+          }, 800);
+        }
+      };
+      
+      nextStep();
+    }
   },
 
   // ==================== AUTH EXTENSIONS (FORGOT / RESET) ====================
@@ -2795,142 +3989,508 @@ window.App = {
     }, 1200);
   },
 
-  // ==================== CREATOR EARNINGS LOADER ====================
-  loadCreatorEarnings: function() {
-    const listBody = document.getElementById("creator-earnings-list-body");
-    if (!listBody) return;
-    
-    listBody.innerHTML = "";
-    
-    // Renders custom mock transactions
-    const txs = [
-      { id: "TX-90312", campaign: "Swad Spices Pune Launch", brand: "Swad Spices Ltd", amount: "₹25,000", status: "settled", date: "2026-08-01" },
-      { id: "TX-90184", campaign: "Vernacular organic tea promotion", brand: "Chai Time", amount: "₹20,000", status: "settled", date: "2026-07-28" },
-      { id: "TX-91048", campaign: "Organic Masala Rollout", brand: "Swad Spices Ltd", amount: "₹15,000", status: "pending", date: "2026-08-03" }
-    ];
-    
-    txs.forEach(t => {
-      const statusColor = t.status === "settled" ? "var(--color-primary-green)" : "var(--color-primary-cyan)";
-      const tr = document.createElement("tr");
-      tr.style.borderBottom = "1px solid var(--color-border)";
-      tr.innerHTML = `
-        <td style="padding: 12px 8px; color: #fff; font-family: monospace;">${t.id}</td>
-        <td style="padding: 12px 8px; color: #fff; font-weight:600;">${t.campaign}</td>
-        <td style="padding: 12px 8px; color: var(--color-text-gray);">${t.brand}</td>
-        <td style="padding: 12px 8px; color: #fff; font-weight: 700;">${t.amount}</td>
-        <td style="padding: 12px 8px;"><span class="tag" style="border: 1px solid ${statusColor}; color: ${statusColor}; background: transparent; padding: 2px 8px; font-size: 10px; border-radius: 4px;">${t.status.toUpperCase()}</span></td>
-        <td style="padding: 12px 8px; color: var(--color-text-muted);">${t.date}</td>
-      `;
-      listBody.appendChild(tr);
-    });
-  },
+
 
   // ==================== BRAND SETTINGS LOADER ====================
   loadBrandSettings: function() {
     this.adminLog("Loaded brand settings panel.");
   },
 
-  // ==================== ADMIN AUDIT LOGS & TAB SWITCHER ====================
-  switchAdminTab: function(tabName) {
-    // Hide all tabs
-    document.getElementById("admin-panel-logs").style.display = "none";
-    document.getElementById("admin-panel-users").style.display = "none";
-    document.getElementById("admin-panel-camps").style.display = "none";
-    
-    // Show active tab
-    if (tabName === "logs") {
-      document.getElementById("admin-panel-logs").style.display = "block";
-    } else if (tabName === "users") {
-      document.getElementById("admin-panel-users").style.display = "block";
-      this.renderAdminUsersList();
-    } else if (tabName === "camps") {
-      document.getElementById("admin-panel-camps").style.display = "block";
-      this.renderAdminCampaignsList();
-    }
-    
-    // Toggle active classes on tab buttons
-    const buttons = ["logs", "users", "camps"];
-    buttons.forEach(btn => {
-      const el = document.getElementById(`btn-admin-tab-${btn}`);
-      if (el) {
-        if (btn === tabName) {
-          el.className = "btn btn-secondary";
-        } else {
-          el.className = "btn btn-tertiary";
-        }
+  // ==================== ADMIN SUB-VIEWS & LOADERS ====================
+  loadAdminDashboard: async function() {
+    try {
+      const data = await window.DB.getAdminDashboard();
+      if (!data) return;
+
+      document.getElementById("admin-stat-creators").textContent = data.stats.totalCreators;
+      document.getElementById("admin-stat-brands").textContent = data.stats.totalBrands;
+      document.getElementById("admin-stat-active-campaigns").textContent = data.stats.activeCampaigns;
+      document.getElementById("admin-stat-active-collaborations").textContent = data.stats.activeCollaborations;
+
+      const list = document.getElementById("admin-dashboard-activity-list");
+      list.innerHTML = "";
+      if (data.recentActivity && data.recentActivity.length > 0) {
+        data.recentActivity.forEach(act => {
+          const date = new Date(act.created_at || Date.now()).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' });
+          let icon = "⚡";
+          if (act.type.includes("creator")) icon = "👤";
+          if (act.type.includes("brand")) icon = "🏢";
+          if (act.type.includes("campaign")) icon = "📢";
+          if (act.type.includes("collab")) icon = "🤝";
+          
+          list.innerHTML += `
+            <div style="display:flex; justify-content:space-between; align-items:center; padding:12px; background:rgba(255,255,255,0.01); border-radius:8px; font-size:12.5px;">
+              <span style="color:#fff;">${icon} <strong>${act.message}</strong></span>
+              <span style="color:var(--color-text-muted); font-size:11px;">${date}</span>
+            </div>
+          `;
+        });
+      } else {
+        list.innerHTML = `<div style="text-align:center; padding:20px; color:var(--color-text-gray);">No recent platform activities recorded.</div>`;
       }
-    });
+    } catch (e) {
+      this.showToast("Failed to load Admin Dashboard: " + e.message, "error");
+    }
   },
 
-  renderAdminUsersList: function() {
-    const listBody = document.getElementById("admin-users-list-body");
-    if (!listBody) return;
-    listBody.innerHTML = "";
-    
-    const mockUsers = [
-      { id: "usr-c91", email: "priya@creator.com", role: "CREATOR", date: "2026-08-01" },
-      { id: "usr-b32", email: "brand@swadspices.com", role: "BRAND", date: "2026-07-29" },
-      { id: "usr-c04", email: "anjali@verma.com", role: "CREATOR", date: "2026-08-03" }
-    ];
-    
-    mockUsers.forEach(u => {
-      const tr = document.createElement("tr");
-      tr.style.borderBottom = "1px solid var(--color-border)";
-      tr.innerHTML = `
-        <td style="padding: 12px 8px; color: var(--color-text-gray); font-family: monospace;">${u.id}</td>
-        <td style="padding: 12px 8px; color:#fff; font-weight:600;">${u.email}</td>
-        <td style="padding: 12px 8px;"><span class="tag ${u.role === 'CREATOR' ? 'tag-cyan' : 'tag-indigo'}" style="font-size: 10px; padding:2px 8px;">${u.role}</span></td>
-        <td style="padding: 12px 8px; color: var(--color-text-muted);">${u.date}</td>
-      `;
-      listBody.appendChild(tr);
-    });
+  loadAdminCreators: async function() {
+    try {
+      const creators = await window.DB.getAdminCreators() || [];
+      this.adminCreators = creators; // Cache creators
+
+      const body = document.getElementById("admin-creators-list-body");
+      body.innerHTML = "";
+      if (creators.length === 0) {
+        body.innerHTML = `<tr><td colspan="7" style="text-align:center; padding:16px; color:var(--color-text-gray);">No creators registered.</td></tr>`;
+      } else {
+        creators.forEach(c => {
+          const creatorScores = c.creator_scores && c.creator_scores[0] ? c.creator_scores[0] : {};
+          const cis = creatorScores.intelligence_score !== undefined && creatorScores.intelligence_score >= 0 ? creatorScores.intelligence_score : "--";
+          const email = c.collab_metadata?.contact_email || "N/A";
+          
+          let enrichClass = "tag-cyan";
+          if (c.ai_status === "Processing") enrichClass = "tag-indigo pulse-badge-blue";
+          if (c.ai_status === "Completed") enrichClass = "tag-green";
+          if (c.ai_status === "Failed") enrichClass = "tag-red";
+
+          let onboardClass = c.profile_status === "Ready" ? "tag-green" : "tag-cyan";
+
+          body.innerHTML += `
+            <tr style="border-bottom: 1px solid rgba(255,255,255,0.02); height: 50px;">
+              <td style="padding:10px 8px; color:#fff; font-weight:600; display:flex; align-items:center; gap:8px;">
+                <img src="${c.avatar_url}" style="width:28px; height:28px; border-radius:50%; border:1px solid rgba(255,255,255,0.1);" alt="Avatar">
+                ${c.full_name}
+              </td>
+              <td style="padding:10px 8px; color:var(--color-text-gray);">${email}</td>
+              <td style="padding:10px 8px; color:var(--color-text-gray);">${c.city || 'Indore'}, ${c.state || 'MP'}</td>
+              <td style="padding:10px 8px; text-align:center; font-weight:700; color:var(--color-primary-cyan);">${cis}</td>
+              <td style="padding:10px 8px; text-align:center;"><span class="tag ${enrichClass}" style="font-size:9.5px;">${c.ai_status}</span></td>
+              <td style="padding:10px 8px; text-align:center;"><span class="tag ${onboardClass}" style="font-size:9.5px;">${c.profile_status}</span></td>
+              <td style="padding:10px 8px; text-align:right;">
+                <button class="btn btn-secondary" style="padding:4px 8px; font-size:11px;" onclick="App.openAdminCreatorModal('${c.id}')">View Details</button>
+              </td>
+            </tr>
+          `;
+        });
+      }
+    } catch (e) {
+      this.showToast("Failed to load Creators registry: " + e.message, "error");
+    }
   },
 
-  renderAdminCampaignsList: function() {
-    const listBody = document.getElementById("admin-camps-list-body");
-    if (!listBody) return;
-    listBody.innerHTML = "";
-    
-    const campaigns = JSON.parse(localStorage.getItem("cl_campaigns") || "[]");
-    campaigns.forEach(c => {
-      const tr = document.createElement("tr");
-      tr.style.borderBottom = "1px solid var(--color-border)";
-      tr.innerHTML = `
-        <td style="padding: 12px 8px; color: var(--color-text-gray); font-family: monospace;">${c.id}</td>
-        <td style="padding: 12px 8px; color:#fff; font-weight:600;">${c.title}</td>
-        <td style="padding: 12px 8px; color:var(--color-primary-green); font-weight:700;">₹${c.budget.toLocaleString('en-IN')}</td>
-        <td style="padding: 12px 8px; color: var(--color-text-gray);">${c.region} (${c.language})</td>
-        <td style="padding: 12px 8px;"><span class="tag tag-green" style="font-size: 10px; padding:2px 8px;">${c.status ? c.status.toUpperCase() : 'ACTIVE'}</span></td>
-      `;
-      listBody.appendChild(tr);
-    });
+  loadAdminBrands: async function() {
+    try {
+      const brands = await window.DB.getAdminBrands() || [];
+      this.adminBrands = brands; // Cache brands
+
+      const body = document.getElementById("admin-brands-list-body");
+      body.innerHTML = "";
+      if (brands.length === 0) {
+        body.innerHTML = `<tr><td colspan="6" style="text-align:center; padding:16px; color:var(--color-text-gray);">No brands registered.</td></tr>`;
+      } else {
+        brands.forEach(b => {
+          body.innerHTML += `
+            <tr style="border-bottom: 1px solid rgba(255,255,255,0.02); height: 50px;">
+              <td style="padding:10px 8px; color:#fff; font-weight:600;">${b.company_name}</td>
+              <td style="padding:10px 8px; color:var(--color-primary-cyan);"><a href="${b.website}" target="_blank" style="color:inherit; text-decoration:none;">${b.website || 'N/A'}</a></td>
+              <td style="padding:10px 8px; text-align:center; color:#fff;">${b.campaigns_count || 0}</td>
+              <td style="padding:10px 8px; text-align:center; color:var(--color-primary-green); font-weight:700;">${b.active_campaigns_count || 0}</td>
+              <td style="padding:10px 8px; text-align:center; color:#fff;">${b.collaborations_count || 0}</td>
+              <td style="padding:10px 8px; text-align:right;">
+                <button class="btn btn-secondary" style="padding:4px 8px; font-size:11px;" onclick="App.openAdminBrandModal('${b.id}')">View Details</button>
+              </td>
+            </tr>
+          `;
+        });
+      }
+    } catch (e) {
+      this.showToast("Failed to load Brands registry: " + e.message, "error");
+    }
   },
 
-  // ==================== CAMPAIGN ACTIONS (EDIT / ARCHIVE) ====================
-  archiveCampaign: function(campId) {
-    const campaigns = JSON.parse(localStorage.getItem("cl_campaigns") || "[]");
-    const idx = campaigns.findIndex(c => c.id === campId);
-    if (idx !== -1) {
-      campaigns[idx].status = "completed";
-      localStorage.setItem("cl_campaigns", JSON.stringify(campaigns));
-      this.showToast("Campaign archived successfully!", "success");
+  loadAdminCampaigns: async function() {
+    try {
+      const campaigns = await window.DB.getAdminCampaigns() || [];
+      const body = document.getElementById("admin-campaigns-list-body");
+      body.innerHTML = "";
+      if (campaigns.length === 0) {
+        body.innerHTML = `<tr><td colspan="7" style="text-align:center; padding:16px; color:var(--color-text-gray);">No campaigns created.</td></tr>`;
+      } else {
+        campaigns.forEach(c => {
+          let labelClass = "tag-cyan";
+          let labelText = "DRAFT";
+          if (c.status === "active") {
+            labelClass = "tag-green";
+            labelText = "PUBLISHED";
+          } else if (c.status === "completed") {
+            labelClass = "tag-indigo";
+            labelText = "CLOSED";
+          }
+
+          body.innerHTML += `
+            <tr style="border-bottom: 1px solid rgba(255,255,255,0.02); height: 50px;">
+              <td style="padding:10px 8px; color:#fff; font-weight:600;">${c.title}</td>
+              <td style="padding:10px 8px; color:var(--color-text-gray);">${c.brand_name}</td>
+              <td style="padding:10px 8px; text-align:right; color:#00F2A6; font-weight:700;">₹${c.budget.toLocaleString('en-IN')}</td>
+              <td style="padding:10px 8px; color:var(--color-text-gray);">${c.region}</td>
+              <td style="padding:10px 8px; color:var(--color-text-gray);">${c.language}</td>
+              <td style="padding:10px 8px; text-align:center;"><span class="tag ${labelClass}" style="font-size:9.5px;">${labelText}</span></td>
+              <td style="padding:10px 8px; text-align:center;"><span class="tag tag-cyan" style="font-size:9.5px;">${c.applications_count || 0} applied</span></td>
+            </tr>
+          `;
+        });
+      }
+    } catch (e) {
+      this.showToast("Failed to load Campaigns manager: " + e.message, "error");
+    }
+  },
+
+  loadAdminCollaborations: async function() {
+    try {
+      const collabs = await window.DB.getAdminCollaborations() || [];
+      const body = document.getElementById("admin-collaborations-list-body");
+      body.innerHTML = "";
+      if (collabs.length === 0) {
+        body.innerHTML = `<tr><td colspan="7" style="text-align:center; padding:16px; color:var(--color-text-gray);">No collaborations active.</td></tr>`;
+      } else {
+        collabs.forEach(c => {
+          const brandName = c.brand ? c.brand.company_name : "A Brand";
+          const creatorName = c.creator ? c.creator.full_name : "A Creator";
+          const date = new Date(c.created_at || Date.now()).toLocaleDateString('en-IN');
+
+          // User friendly label parsing mimicking creator/brand dash
+          let displayStatus = "Applied";
+          let badgeClass = "tag-cyan";
+          
+          if (c.status === "accepted") {
+            displayStatus = "Selected";
+            badgeClass = "tag-green";
+            if (c.price_justification && c.price_justification.includes("In Progress")) {
+              displayStatus = "In Progress";
+              badgeClass = "tag-blue";
+            }
+          } else if (c.status === "completed") {
+            displayStatus = "Completed";
+            badgeClass = "tag-green";
+          } else if (c.status === "rejected") {
+            displayStatus = "Rejected";
+            badgeClass = "tag-red";
+          } else if (c.status === "pending") {
+            if (c.price_justification && c.price_justification.includes("State: ")) {
+              displayStatus = c.price_justification.split("State: ")[1].trim();
+              badgeClass = "tag-cyan";
+            }
+          }
+
+          body.innerHTML += `
+            <tr style="border-bottom: 1px solid rgba(255,255,255,0.02); height: 50px;">
+              <td style="padding:10px 8px; color:#fff; font-weight:600;">${c.campaign ? c.campaign.title : 'Campaign Offer'}</td>
+              <td style="padding:10px 8px; color:var(--color-text-gray);">${brandName}</td>
+              <td style="padding:10px 8px; color:#fff;">${creatorName}</td>
+              <td style="padding:10px 8px; text-align:right; color:#00F2A6; font-weight:700;">₹${c.suggested_price.toLocaleString('en-IN')}</td>
+              <td style="padding:10px 8px; text-align:center;"><span class="tag tag-indigo" style="font-size:9.5px; text-transform:uppercase;">${c.initiated_by}</span></td>
+              <td style="padding:10px 8px; text-align:center;"><span class="tag ${badgeClass}" style="font-size:9.5px; text-transform:uppercase;">${displayStatus}</span></td>
+              <td style="padding:10px 8px; color:var(--color-text-muted); font-size:11px;">${date}</td>
+            </tr>
+          `;
+        });
+      }
+    } catch (e) {
+      this.showToast("Failed to load Collaborations registry: " + e.message, "error");
+    }
+  },
+
+  openAdminCreatorModal: async function(creatorId) {
+    try {
+      const creator = this.adminCreators ? this.adminCreators.find(c => c.id === creatorId) : null;
+      if (!creator) return;
+
+      // Identity pre-fills
+      document.getElementById("admin-creator-detail-name").textContent = creator.full_name;
+      document.getElementById("admin-creator-detail-fullname").textContent = creator.full_name;
+      document.getElementById("admin-creator-detail-avatar").src = creator.avatar_url;
+      document.getElementById("admin-creator-detail-bio").textContent = creator.bio;
+      document.getElementById("admin-creator-detail-onboarding").textContent = creator.profile_status.toUpperCase();
+      document.getElementById("admin-creator-detail-ai").textContent = creator.ai_status.toUpperCase();
+      document.getElementById("admin-creator-detail-location").textContent = `${creator.city || 'Indore'}, ${creator.state || 'MP'}`;
+
+      // Retrieve scores
+      const creatorScores = creator.creator_scores && creator.creator_scores[0] ? creator.creator_scores[0] : {};
+      const cis = creatorScores.intelligence_score !== undefined && creatorScores.intelligence_score >= 0 ? creatorScores.intelligence_score : "--";
+      const trust = creatorScores.audience_trust !== undefined && creatorScores.audience_trust >= 0 ? creatorScores.audience_trust : 0;
+      const engagement = creatorScores.engagement !== undefined && creatorScores.engagement >= 0 ? creatorScores.engagement : 0;
+      const regional = creatorScores.regional_influence !== undefined && creatorScores.regional_influence >= 0 ? creatorScores.regional_influence : 0;
+      const consistency = creatorScores.content_consistency !== undefined && creatorScores.content_consistency >= 0 ? creatorScores.content_consistency : 0;
+      const readiness = creatorScores.brand_readiness !== undefined && creatorScores.brand_readiness >= 0 ? creatorScores.brand_readiness : 0;
+
+      // Populate overall CIS and vectors bars
+      document.getElementById("admin-creator-detail-cis").textContent = cis;
+      document.getElementById("admin-creator-vector-trust").textContent = `${trust}%`;
+      document.getElementById("admin-creator-fill-trust").style.width = `${trust}%`;
+      document.getElementById("admin-creator-vector-engagement").textContent = `${engagement}%`;
+      document.getElementById("admin-creator-fill-engagement").style.width = `${engagement}%`;
+      document.getElementById("admin-creator-vector-regional").textContent = `${regional}%`;
+      document.getElementById("admin-creator-fill-regional").style.width = `${regional}%`;
+      document.getElementById("admin-creator-vector-consistency").textContent = `${consistency}%`;
+      document.getElementById("admin-creator-fill-consistency").style.width = `${consistency}%`;
+      document.getElementById("admin-creator-vector-readiness").textContent = `${readiness}%`;
+      document.getElementById("admin-creator-fill-readiness").style.width = `${readiness}%`;
+
+      // Strengths & Weaknesses
+      const strengthsList = document.getElementById("admin-creator-detail-strengths");
+      strengthsList.innerHTML = "";
+      const strengths = creator.creator_ai_analysis && creator.creator_ai_analysis[0] ? creator.creator_ai_analysis[0].strengths || [] : ["Consistent local vocabulary matching target niches."];
+      strengths.forEach(s => {
+        strengthsList.innerHTML += `<li>${s}</li>`;
+      });
+
+      const weaknessesList = document.getElementById("admin-creator-detail-weaknesses");
+      weaknessesList.innerHTML = "";
+      const weaknesses = creator.creator_ai_analysis && creator.creator_ai_analysis[0] ? creator.creator_ai_analysis[0].weaknesses || [] : ["Requires audience geography metrics updates."];
+      weaknesses.forEach(w => {
+        weaknessesList.innerHTML += `<li>${w}</li>`;
+      });
+
+      // Retrieve campaigns for this creator
+      const creatorCollabs = await window.DB.getCollabsForCreator(creatorId) || [];
+      const collabBody = document.getElementById("admin-creator-campaigns-body");
+      collabBody.innerHTML = "";
+      if (creatorCollabs.length === 0) {
+        collabBody.innerHTML = `<tr><td colspan="5" style="text-align:center; padding:8px; color:var(--color-text-gray);">No campaign collaborations recorded.</td></tr>`;
+      } else {
+        creatorCollabs.forEach(col => {
+          let displayStatus = "Applied";
+          if (col.status === "accepted") {
+            displayStatus = "Selected";
+            if (col.price_justification && col.price_justification.includes("In Progress")) displayStatus = "In Progress";
+          } else if (col.status === "completed") {
+            displayStatus = "Completed";
+          } else if (col.status === "rejected") {
+            displayStatus = "Rejected";
+          }
+
+          collabBody.innerHTML += `
+            <tr style="border-bottom:1px solid rgba(255,255,255,0.01);">
+              <td style="padding:8px 4px; color:#fff;">${col.campaign ? col.campaign.title : 'Campaign Offer'}</td>
+              <td style="padding:8px 4px; color:var(--color-text-gray);">${col.brand ? col.brand.company_name : 'Sponsor'}</td>
+              <td style="padding:8px 4px; text-align:right; color:#00F2A6;">₹${col.suggested_price.toLocaleString('en-IN')}</td>
+              <td style="padding:8px 4px; text-align:center; text-transform:uppercase;">${col.initiated_by}</td>
+              <td style="padding:8px 4px; text-align:center; color:#fff; font-weight:600;">${displayStatus}</td>
+            </tr>
+          `;
+        });
+      }
+
+      document.getElementById("modal-admin-creator-details").classList.add("active");
+    } catch (e) {
+      this.showToast("Failed to open creator details: " + e.message, "error");
+    }
+  },
+
+  closeAdminCreatorModal: function() {
+    document.getElementById("modal-admin-creator-details").classList.remove("active");
+  },
+
+  openAdminBrandModal: async function(brandId) {
+    try {
+      const brand = this.adminBrands ? this.adminBrands.find(b => b.id === brandId) : null;
+      if (!brand) return;
+
+      document.getElementById("admin-brand-detail-name").textContent = brand.company_name;
+      document.getElementById("admin-brand-detail-fullname").textContent = brand.company_name;
+      document.getElementById("admin-brand-detail-bio").textContent = brand.bio || "No brand company bio provided.";
+      document.getElementById("admin-brand-detail-website").textContent = brand.website || "N/A";
+      document.getElementById("admin-brand-detail-industry").textContent = brand.industry || "N/A";
+
+      // Query campaigns created by this brand
+      const campaigns = await window.DB.getCampaigns(brandId) || [];
+      const campBody = document.getElementById("admin-brand-campaigns-body");
+      campBody.innerHTML = "";
+      if (campaigns.length === 0) {
+        campBody.innerHTML = `<tr><td colspan="5" style="text-align:center; padding:8px; color:var(--color-text-gray);">No campaigns created by this brand.</td></tr>`;
+      } else {
+        campaigns.forEach(c => {
+          let labelText = "DRAFT";
+          if (c.status === "active") labelText = "PUBLISHED";
+          if (c.status === "completed") labelText = "CLOSED";
+
+          campBody.innerHTML += `
+            <tr style="border-bottom:1px solid rgba(255,255,255,0.01);">
+              <td style="padding:8px 4px; color:#fff;">${c.title}</td>
+              <td style="padding:8px 4px; color:var(--color-text-gray); text-transform:capitalize;">${c.category}</td>
+              <td style="padding:8px 4px; text-align:right; color:#00F2A6;">₹${c.budget.toLocaleString('en-IN')}</td>
+              <td style="padding:8px 4px; color:var(--color-text-gray);">${c.region}</td>
+              <td style="padding:8px 4px; text-align:center; color:#fff;">${labelText}</td>
+            </tr>
+          `;
+        });
+      }
+
+      // Query collaborations for this brand
+      const brandCollabs = await window.DB.getCollabsForBrand(brandId) || [];
+      const collabBody = document.getElementById("admin-brand-collabs-body");
+      collabBody.innerHTML = "";
+      if (brandCollabs.length === 0) {
+        collabBody.innerHTML = `<tr><td colspan="5" style="text-align:center; padding:8px; color:var(--color-text-gray);">No platform partnerships activity.</td></tr>`;
+      } else {
+        brandCollabs.forEach(col => {
+          const creatorName = col.creator ? col.creator.full_name : "A Creator";
+          let displayStatus = "Applied";
+          if (col.status === "accepted") {
+            displayStatus = "Selected";
+            if (col.price_justification && col.price_justification.includes("In Progress")) displayStatus = "In Progress";
+          } else if (col.status === "completed") {
+            displayStatus = "Completed";
+          } else if (col.status === "rejected") {
+            displayStatus = "Rejected";
+          }
+
+          collabBody.innerHTML += `
+            <tr style="border-bottom:1px solid rgba(255,255,255,0.01);">
+              <td style="padding:8px 4px; color:#fff;">${creatorName}</td>
+              <td style="padding:8px 4px; color:var(--color-text-gray);">${col.campaign ? col.campaign.title : 'Campaign Offer'}</td>
+              <td style="padding:8px 4px; text-align:right; color:#00F2A6;">₹${col.suggested_price.toLocaleString('en-IN')}</td>
+              <td style="padding:8px 4px; text-align:center; text-transform:uppercase;">${col.initiated_by}</td>
+              <td style="padding:8px 4px; text-align:center; color:#fff; font-weight:600;">${displayStatus}</td>
+            </tr>
+          `;
+        });
+      }
+
+      document.getElementById("modal-admin-brand-details").classList.add("active");
+    } catch (e) {
+      this.showToast("Failed to open brand details: " + e.message, "error");
+    }
+  },
+
+  closeAdminBrandModal: function() {
+    document.getElementById("modal-admin-brand-details").classList.remove("active");
+  },
+
+  // ==================== CAMPAIGN ACTIONS (EDIT / DELETE) ====================
+  deleteCampaign: async function(campId) {
+    const confirmed = confirm("Are you sure you want to delete this campaign? This action cannot be undone.");
+    if (!confirmed) return;
+    
+    try {
+      await window.DB.deleteCampaign(campId);
+      if (this.selectedCampaignId === campId) {
+        this.selectedCampaignId = null;
+      }
+      this.showToast("Campaign deleted successfully.", "success");
       this.loadBrandCampaigns();
+    } catch (e) {
+      this.showToast("Failed to delete campaign: " + e.message, "error");
     }
   },
 
   editCampaign: function(campId) {
-    const campaigns = JSON.parse(localStorage.getItem("cl_campaigns") || "[]");
-    const camp = campaigns.find(c => c.id === campId);
+    let camp;
+    if (window.DB.isLive()) {
+      camp = this.campaigns ? this.campaigns.find(c => c.id === campId) : null;
+    } else {
+      const campaigns = JSON.parse(localStorage.getItem("cl_campaigns") || "[]");
+      camp = campaigns.find(c => c.id === campId);
+    }
     if (camp) {
+      this.resetCampaignForm();
+      this.ensureStateSelectPopulated();
+
       // Pre-fill campaign form values
       document.getElementById("camp-title").value = camp.title;
       document.getElementById("camp-objective").value = camp.objective;
       document.getElementById("camp-category").value = camp.category;
-      document.getElementById("camp-region").value = camp.region;
+      
+      // Determine state/city
+      const city = camp.region;
+      let state = "";
+      for (const [st, cities] of Object.entries(LOCATION_DATA)) {
+        if (cities.includes(city)) {
+          state = st;
+          break;
+        }
+      }
+
+      const stateSelect = document.getElementById("camp-state");
+      const citySelect = document.getElementById("camp-city");
+      
+      if (stateSelect && citySelect) {
+        if (state) {
+          stateSelect.value = state;
+          this.handleCampaignStateChange(state);
+          citySelect.value = city;
+        } else {
+          // Custom fallback for unmapped region strings
+          stateSelect.value = "";
+          citySelect.innerHTML = `<option value="${city}" selected>${city}</option>`;
+          citySelect.disabled = false;
+        }
+      }
+
       document.getElementById("camp-language").value = camp.language;
       document.getElementById("camp-budget").value = camp.budget;
       document.getElementById("camp-type").value = camp.creator_type;
+      document.getElementById("camp-status").value = camp.status || "active";
       
+      // Parse target audience
+      const audStr = camp.target_audience || "";
+      if (audStr.includes("Age:") || audStr.includes("Interests:")) {
+        const parts = audStr.split("|");
+        parts.forEach(part => {
+          if (part.includes("Age:")) {
+            const ages = part.replace("Age:", "").split(",").map(s => s.trim());
+            ages.forEach(age => {
+              const chk = document.querySelector(`input[name="camp-age-group"][value="${age}"]`);
+              if (chk) {
+                chk.checked = true;
+                this.handleChipChange(chk);
+              }
+            });
+          } else if (part.includes("Interests:")) {
+            const interests = part.replace("Interests:", "").split(",").map(s => s.trim());
+            interests.forEach(interest => {
+              const chk = document.querySelector(`input[name="camp-interest"][value="${interest}"]`);
+              if (chk) {
+                chk.checked = true;
+                this.handleChipChange(chk);
+              }
+            });
+          }
+        });
+      } else {
+        // Fallback parsing for legacy free-text values
+        const lowerAud = audStr.toLowerCase();
+        
+        if (lowerAud.includes("18-24")) {
+          const chk = document.querySelector('input[name="camp-age-group"][value="18-24"]');
+          if (chk) { chk.checked = true; this.handleChipChange(chk); }
+        }
+        if (lowerAud.includes("25-34")) {
+          const chk = document.querySelector('input[name="camp-age-group"][value="25-34"]');
+          if (chk) { chk.checked = true; this.handleChipChange(chk); }
+        }
+        if (lowerAud.includes("35-44")) {
+          const chk = document.querySelector('input[name="camp-age-group"][value="35-44"]');
+          if (chk) { chk.checked = true; this.handleChipChange(chk); }
+        }
+        if (lowerAud.includes("under 18") || lowerAud.includes("under-18")) {
+          const chk = document.querySelector('input[name="camp-age-group"][value="under-18"]');
+          if (chk) { chk.checked = true; this.handleChipChange(chk); }
+        }
+        if (lowerAud.includes("45+")) {
+          const chk = document.querySelector('input[name="camp-age-group"][value="45+"]');
+          if (chk) { chk.checked = true; this.handleChipChange(chk); }
+        }
+
+        const availableInterests = ["Food", "Tech", "Lifestyle", "Fashion", "Beauty", "Gaming", "Travel", "Fitness"];
+        availableInterests.forEach(interest => {
+          if (lowerAud.includes(interest.toLowerCase())) {
+            const chk = document.querySelector(`input[name="camp-interest"][value="${interest}"]`);
+            if (chk) { chk.checked = true; this.handleChipChange(chk); }
+          }
+        });
+      }
+
       // Update form submit index so it edits instead of inserting
       const form = document.getElementById("campaign-create-form");
       form.dataset.editId = campId;

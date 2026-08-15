@@ -15,4 +15,14 @@ const supabase = createClient(supabaseUrl, supabaseServiceKey, {
   }
 });
 
+const createTempClient = () => {
+  return createClient(supabaseUrl, supabaseServiceKey, {
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false
+    }
+  });
+};
+
 module.exports = supabase;
+module.exports.createTempClient = createTempClient;

@@ -1,0 +1,399 @@
+{
+  "name": "CreatorLens - AI Assistant Workflow",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "creatorlens-ai-assistant",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "a0000000-0000-0000-0000-000000000001",
+      "name": "Webhook - AI Assistant",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [
+        100,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const body = $json.body || {};\nif (!body.creator_id || !body.message) {\n  return [{\n    valid: false,\n    error_msg: \"Missing required creator_id or message in request body.\",\n    creator_id: body.creator_id || null\n  }];\n}\nreturn [{\n  valid: true,\n  creator_id: body.creator_id,\n  message: body.message,\n  gemini_api_key: body.gemini_api_key || null\n}];"
+      },
+      "id": "a0000000-0000-0000-0000-000000000002",
+      "name": "Validate Input",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        280,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ $json.valid }}",
+              "value2": true
+            }
+          ]
+        }
+      },
+      "id": "a0000000-0000-0000-0000-000000000003",
+      "name": "Check Valid Input",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        460,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "tableId": "creators",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "id",
+              "operator": "equal",
+              "keyValue": "={{ $('Validate Input').first().json.creator_id }}"
+            }
+          ]
+        }
+      },
+      "id": "a0000000-0000-0000-0000-000000000004",
+      "name": "Fetch Creator Profile",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        660,
+        200
+      ],
+      "credentials": {
+        "supabaseApi": {
+          "id": "supabaseApi",
+          "name": "Supabase"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "tableId": "creator_scores",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "creator_id",
+              "operator": "equal",
+              "keyValue": "={{ $('Validate Input').first().json.creator_id }}"
+            }
+          ]
+        }
+      },
+      "id": "a0000000-0000-0000-0000-000000000005",
+      "name": "Fetch Creator Scores",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        840,
+        200
+      ],
+      "credentials": {
+        "supabaseApi": {
+          "id": "supabaseApi",
+          "name": "Supabase"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "tableId": "creator_ai_analysis",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "creator_id",
+              "operator": "equal",
+              "keyValue": "={{ $('Validate Input').first().json.creator_id }}"
+            }
+          ]
+        }
+      },
+      "id": "a0000000-0000-0000-0000-000000000006",
+      "name": "Fetch Creator AI Analysis",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        1020,
+        200
+      ],
+      "credentials": {
+        "supabaseApi": {
+          "id": "supabaseApi",
+          "name": "Supabase"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const creator = $('Fetch Creator Profile').first()?.json;\nconst scores = $('Fetch Creator Scores').first()?.json;\nconst analysis = $('Fetch Creator AI Analysis').first()?.json;\nconst input = $('Validate Input').first().json;\n\n// Check if profile and analysis exists\nif (!creator || !scores || !analysis) {\n  return [{\n    has_data: false,\n    creator_id: input.creator_id,\n    message: input.message,\n    gemini_api_key: input.gemini_api_key,\n    reason: \"Profile has not been enrichment initialized yet.\"\n  }];\n}\n\nreturn [{\n  has_data: true,\n  creator_id: input.creator_id,\n  message: input.message,\n  gemini_api_key: input.gemini_api_key,\n  context: {\n    full_name: creator.full_name || 'N/A',\n    bio: creator.bio || 'N/A',\n    city: creator.city || 'N/A',\n    state: creator.state || 'N/A',\n    categories: Array.isArray(creator.categories) ? creator.categories.join(', ') : 'N/A',\n    languages: Array.isArray(creator.languages) ? creator.languages.join(', ') : 'N/A',\n    followers_count: creator.followers_count || 0,\n    engagement_rate: creator.engagement_rate || 0,\n    average_views: creator.average_views || 0,\n    profile_status: creator.profile_status || 'Incomplete',\n    ai_status: creator.ai_status || 'Not Started',\n    \n    // Scores\n    intelligence_score: scores.intelligence_score !== undefined ? scores.intelligence_score : 'N/A',\n    audience_trust: scores.audience_trust !== undefined ? scores.audience_trust : 'N/A',\n    engagement_rate_score: scores.engagement_rate_score !== undefined ? scores.engagement_rate_score : 'N/A',\n    regional_influence: scores.regional_influence !== undefined ? scores.regional_influence : 'N/A',\n    content_consistency: scores.content_consistency !== undefined ? scores.content_consistency : 'N/A',\n    brand_readiness: scores.brand_readiness !== undefined ? scores.brand_readiness : 'N/A',\n    ai_explanation: scores.ai_explanation || 'N/A',\n    \n    // Analysis\n    profile_summary: analysis.profile_summary || 'N/A',\n    profile_completeness: analysis.profile_completeness !== undefined ? analysis.profile_completeness : 'N/A',\n    strengths: Array.isArray(analysis.strengths) ? analysis.strengths.join(', ') : 'N/A',\n    weaknesses: Array.isArray(analysis.weaknesses) ? analysis.weaknesses.join(', ') : 'N/A',\n    missing_information: Array.isArray(analysis.missing_information) ? analysis.missing_information.join(', ') : 'N/A'\n  }\n}];"
+      },
+      "id": "a0000000-0000-0000-0000-000000000007",
+      "name": "Prepare Creator Context",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1200,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ $json.has_data }}",
+              "value2": true
+            }
+          ]
+        }
+      },
+      "id": "a0000000-0000-0000-0000-000000000008",
+      "name": "Check Profile Enriched",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        1380,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "key",
+              "value": "={{ $json.gemini_api_key || 'YOUR_API_KEY_FALLBACK' }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyContentType": "json",
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"contents\": [\n    {\n      \"parts\": [\n        {\n          \"text\": \"You are the CreatorLens Intelligence Assistant.\\n\\nYou help creators understand their own CreatorLens profile, Creator Intelligence Score, strengths, weaknesses, readiness and practical improvement areas.\\n\\nAnswer the user's specific question using only the CreatorLens data provided in the context. Keep your response concise, human, specific, actionable, and easy to understand (2-5 short paragraphs or bullet points maximum). Avoid corporate talk, raw database terms, or long reports.\\n\\nCREATOR DATA CONTEXT:\\nCreator Name: {{ $json.context.full_name }}\\nLocation: {{ $json.context.city }}, {{ $json.context.state }}\\nCategories: {{ $json.context.categories }}\\nFollowers: {{ $json.context.followers_count }}\\nEngagement Rate: {{ $json.context.engagement_rate }}%\\nAverage Views: {{ $json.context.average_views }}\\nOnboarding Status: {{ $json.context.profile_status }}\\n\\nSCORES & METRICS:\\nCreator Intelligence Score (CIS): {{ $json.context.intelligence_score }}\\nAudience Trust Score: {{ $json.context.audience_trust }}\\nEngagement Rate Score: {{ $json.context.engagement_rate_score }}\\nRegional Influence Score: {{ $json.context.regional_influence }}\\nContent Consistency Score: {{ $json.context.content_consistency }}\\nBrand Readiness Score: {{ $json.context.brand_readiness }}\\n\\nPROFILE SUMMARY & AI OVERVIEW:\\nOverview: {{ $json.context.profile_summary }}\\nProfile Completeness: {{ $json.context.profile_completeness }}%\\nStrengths: {{ $json.context.strengths }}\\nWeaknesses: {{ $json.context.weaknesses }}\\nMissing Details: {{ $json.context.missing_information }}\\nDetailed AI Score Explanation: {{ $json.context.ai_explanation }}\\n\\nUSER QUESTION: {{ $json.message }}\\n\\nYour answer must address their specific question directly. If they ask about strengths, focus on strengths. If they ask about weaknesses or improvements, focus on that. If the user asks something completely unrelated to their profile, data or campaigns, politely explain your scope as the CreatorLens Intelligence Assistant.\" \n        }\n      ]\n    }\n  ]\n}",
+        "options": {}
+      },
+      "id": "a0000000-0000-0000-0000-000000000009",
+      "name": "Gemini - Creator Assistant",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        1560,
+        150
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const responseText = $('Gemini - Creator Assistant').first().json.candidates[0].content.parts[0].text;\nreturn [{\n  success: true,\n  response: responseText.trim(),\n  creator_id: $('Prepare Creator Context').first().json.creator_id\n}];"
+      },
+      "id": "a0000000-0000-0000-0000-000000000010",
+      "name": "Parse Gemini Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1740,
+        150
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "{\n  \"success\": {{ $json.success }},\n  \"response\": \"{{ $json.response }}\",\n  \"creator_id\": \"{{ $json.creator_id }}\"\n}",
+        "options": {}
+      },
+      "id": "a0000000-0000-0000-0000-000000000011",
+      "name": "Respond - Assistant",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        1920,
+        150
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "{\n  \"success\": false,\n  \"response\": \"Your Creator Intelligence profile hasn't been generated yet. Complete your profile and run Creator Intelligence analysis first.\",\n  \"creator_id\": \"{{ $json.creator_id }}\"\n}",
+        "options": {}
+      },
+      "id": "a0000000-0000-0000-0000-000000000012",
+      "name": "Respond - Not Enriched",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        1560,
+        320
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "{\n  \"success\": false,\n  \"response\": \"{{ $json.error_msg || 'Unable to process your request right now.' }}\",\n  \"creator_id\": \"{{ $json.creator_id || '' }}\"\n}",
+        "options": {}
+      },
+      "id": "a0000000-0000-0000-0000-000000000013",
+      "name": "Respond - Invalid Input",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        660,
+        420
+      ]
+    }
+  ],
+  "connections": {
+    "Webhook - AI Assistant": {
+      "main": [
+        [
+          {
+            "node": "Validate Input",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate Input": {
+      "main": [
+        [
+          {
+            "node": "Check Valid Input",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Valid Input": {
+      "main": [
+        [
+          {
+            "node": "Fetch Creator Profile",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Respond - Invalid Input",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Creator Profile": {
+      "main": [
+        [
+          {
+            "node": "Fetch Creator Scores",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Creator Scores": {
+      "main": [
+        [
+          {
+            "node": "Fetch Creator AI Analysis",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Creator AI Analysis": {
+      "main": [
+        [
+          {
+            "node": "Prepare Creator Context",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Creator Context": {
+      "main": [
+        [
+          {
+            "node": "Check Profile Enriched",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Profile Enriched": {
+      "main": [
+        [
+          {
+            "node": "Gemini - Creator Assistant",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Respond - Not Enriched",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gemini - Creator Assistant": {
+      "main": [
+        [
+          {
+            "node": "Parse Gemini Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Gemini Response": {
+      "main": [
+        [
+          {
+            "node": "Respond - Assistant",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {},
+  "meta": {
+    "instanceId": "6c4ba7bd9cc2fa6df405d4b5df5bead2ee2e5bfba9c83693e506df1db2c4516a"
+  }
+}

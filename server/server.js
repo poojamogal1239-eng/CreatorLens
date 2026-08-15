@@ -33,6 +33,8 @@ app.use('/api/campaigns', require('./routes/campaigns'));
 app.use('/api/collaborations', require('./routes/collaborations'));
 app.use('/api/brands', require('./routes/brands'));
 app.use('/api/notifications', require('./routes/notifications'));
+app.use('/api/assistant', require('./routes/assistant'));
+app.use('/api/admin', require('./routes/admin'));
 
 // Global Error Handler
 app.use((err, req, res, next) => {

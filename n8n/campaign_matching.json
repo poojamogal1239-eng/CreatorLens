@@ -20,15 +20,27 @@
     {
       "parameters": {
         "operation": "update",
-        "table": "ai_jobs",
-        "id": "={{ $json.body.job_id }}",
-        "columns": [
-          "status",
-          "started_at"
-        ],
-        "values": {
-          "status": "Processing",
-          "started_at": "={{ new Date().toISOString() }}"
+        "tableId": "ai_jobs",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "id",
+              "operator": "equal",
+              "keyValue": "={{ $('Webhook Trigger').first().json.body.job_id }}"
+            }
+          ]
+        },
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "status",
+              "fieldValue": "Processing"
+            },
+            {
+              "fieldId": "started_at",
+              "fieldValue": "={{ new Date().toISOString() }}"
+            }
+          ]
         }
       },
       "id": "1e8df5db-8f83-4a1d-b8d9-6c3e7f41cf6a",
@@ -38,13 +50,27 @@
       "position": [
         280,
         300
-      ]
+      ],
+      "credentials": {
+        "supabaseApi": {
+          "id": "supabaseApi",
+          "name": "Supabase"
+        }
+      }
     },
     {
       "parameters": {
         "operation": "get",
-        "table": "campaigns",
-        "id": "={{ $('Webhook Trigger').first().json.body.campaign_id }}"
+        "tableId": "campaigns",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "id",
+              "operator": "equal",
+              "keyValue": "={{ $('Webhook Trigger').first().json.body.campaign_id }}"
+            }
+          ]
+        }
       },
       "id": "2e8df5db-8f83-4a1d-b8d9-6c3e7f41cf6c",
       "name": "Fetch Campaign Brief",
@@ -53,17 +79,46 @@
       "position": [
         450,
         300
-      ]
+      ],
+      "credentials": {
+        "supabaseApi": {
+          "id": "supabaseApi",
+          "name": "Supabase"
+        }
+      }
     },
     {
       "parameters": {
-        "model": "gemini-1.5-pro",
-        "prompt": "=Analyze this campaign brief objective:\nTitle: {{ $json.title }}\nObjective: {{ $json.objective }}\nCategory: {{ $json.category }}\nTarget Audience: {{ $json.target_audience }}\nCreator Type Requirement: {{ $json.creator_type }}\n\nExtract and return a JSON object with:\n1. ai_keywords (array of 4-5 relevant keywords/tags)\n2. ai_tier (string representing demographic tier, e.g. \"Micro-Influencer (10K - 100K)\" or \"Mid-Tier (100K+)\")"
+        "method": "POST",
+        "url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "key",
+              "value": "={{ $('Webhook Trigger').first().json.body.gemini_api_key || 'YOUR_API_KEY_FALLBACK' }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyContentType": "json",
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"contents\": [\n    {\n      \"parts\": [\n        {\n          \"text\": \"Analyze this campaign brief objective:\\nTitle: {{ $('Fetch Campaign Brief').first().json.title }}\\nObjective: {{ $('Fetch Campaign Brief').first().json.objective }}\\nCategory: {{ $('Fetch Campaign Brief').first().json.category }}\\nTarget Audience: {{ $('Fetch Campaign Brief').first().json.target_audience }}\\nCreator Type Requirement: {{ $('Fetch Campaign Brief').first().json.creator_type }}\\n\\nYou MUST return strict JSON only. Do not include markdown code block formatting backticks (like ```json). The output must match this JSON schema:\\n{\\n  \\\"ai_keywords\\\": [\\\"keyword1\\\", \\\"keyword2\\\", \\\"keyword3\\\", \\\"keyword4\\\"],\\n  \\\"ai_tier\\\": \\\"Micro-Influencer (10K - 100K)\\\"\\n}\"\n        }\n      ]\n    }\n  ]\n}",
+        "options": {}
       },
       "id": "3e8df5db-8f83-4a1d-b8d9-6c3e7f41cf6d",
       "name": "Gemini - Parse Brief (WF-04)",
-      "type": "n8n-nodes-base.googleGemini",
-      "typeVersion": 1,
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
       "position": [
         630,
         300
@@ -71,16 +126,41 @@
     },
     {
       "parameters": {
+        "jsCode": "const responseText = $('Gemini - Parse Brief (WF-04)').first().json.candidates[0].content.parts[0].text;\nconst jsonMatch = responseText.match(/```(?:json)?\\s*([\\s\\S]*?)\\s*```/) || [null, responseText];\nconst jsonString = jsonMatch[1].trim();\nconst parsed = JSON.parse(jsonString);\n\nreturn [{\n  ai_keywords: Array.isArray(parsed.ai_keywords) ? parsed.ai_keywords : [],\n  ai_tier: parsed.ai_tier || 'Micro-Influencer (10K - 100K)'\n}];"
+      },
+      "id": "3e8df5db-8f83-4a1d-b8d9-6c3e7f41cf6f",
+      "name": "Parse Gemini Response (WF-04)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        720,
+        480
+      ]
+    },
+    {
+      "parameters": {
         "operation": "update",
-        "table": "campaigns",
-        "id": "={{ $('Webhook Trigger').item.json.body.campaign_id }}",
-        "columns": [
-          "ai_keywords",
-          "ai_tier"
-        ],
-        "values": {
-          "ai_keywords": "={{ $json.ai_keywords }}",
-          "ai_tier": "={{ $json.ai_tier }}"
+        "tableId": "campaigns",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "id",
+              "operator": "equal",
+              "keyValue": "={{ $('Webhook Trigger').first().json.body.campaign_id }}"
+            }
+          ]
+        },
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "ai_keywords",
+              "fieldValue": "={{ $json.ai_keywords }}"
+            },
+            {
+              "fieldId": "ai_tier",
+              "fieldValue": "={{ $json.ai_tier }}"
+            }
+          ]
         }
       },
       "id": "4e8df5db-8f83-4a1d-b8d9-6c3e7f41cf6e",
@@ -90,12 +170,18 @@
       "position": [
         810,
         300
-      ]
+      ],
+      "credentials": {
+        "supabaseApi": {
+          "id": "supabaseApi",
+          "name": "Supabase"
+        }
+      }
     },
     {
       "parameters": {
         "operation": "getAll",
-        "table": "creators",
+        "tableId": "creators",
         "options": {}
       },
       "id": "5e8df5db-8f83-4a1d-b8d9-6c3e7f41cf6f",
@@ -105,12 +191,18 @@
       "position": [
         990,
         300
-      ]
+      ],
+      "credentials": {
+        "supabaseApi": {
+          "id": "supabaseApi",
+          "name": "Supabase"
+        }
+      }
     },
     {
       "parameters": {
         "operation": "getAll",
-        "table": "creator_scores",
+        "tableId": "creator_scores",
         "options": {}
       },
       "id": "6e8df5db-8f83-4a1d-b8d9-6c3e7f41cf7a",
@@ -120,7 +212,13 @@
       "position": [
         1170,
         300
-      ]
+      ],
+      "credentials": {
+        "supabaseApi": {
+          "id": "supabaseApi",
+          "name": "Supabase"
+        }
+      }
     },
     {
       "parameters": {
@@ -137,29 +235,48 @@
     },
     {
       "parameters": {
-        "operation": "insert",
-        "table": "campaign_matches",
-        "columns": [
-          "campaign_id",
-          "creator_id",
-          "match_score",
-          "match_explanation",
-          "min_price",
-          "recommended_price",
-          "premium_price",
-          "pricing_justification",
-          "status"
-        ],
-        "values": {
-          "campaign_id": "={{ $json.campaign_id }}",
-          "creator_id": "={{ $json.creator_id }}",
-          "match_score": "={{ $json.match_score }}",
-          "match_explanation": "={{ $json.match_explanation }}",
-          "min_price": "={{ $json.min_price }}",
-          "recommended_price": "={{ $json.recommended_price }}",
-          "premium_price": "={{ $json.premium_price }}",
-          "pricing_justification": "={{ $json.pricing_justification }}",
-          "status": "={{ $json.status }}"
+        "operation": "create",
+        "tableId": "campaign_matches",
+        "dataToSend": "defineBelow",
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "campaign_id",
+              "fieldValue": "={{ $json.campaign_id }}"
+            },
+            {
+              "fieldId": "creator_id",
+              "fieldValue": "={{ $json.creator_id }}"
+            },
+            {
+              "fieldId": "match_score",
+              "fieldValue": "={{ $json.match_score }}"
+            },
+            {
+              "fieldId": "match_explanation",
+              "fieldValue": "={{ $json.match_explanation }}"
+            },
+            {
+              "fieldId": "min_price",
+              "fieldValue": "={{ $json.min_price }}"
+            },
+            {
+              "fieldId": "recommended_price",
+              "fieldValue": "={{ $json.recommended_price }}"
+            },
+            {
+              "fieldId": "premium_price",
+              "fieldValue": "={{ $json.premium_price }}"
+            },
+            {
+              "fieldId": "pricing_justification",
+              "fieldValue": "={{ $json.pricing_justification }}"
+            },
+            {
+              "fieldId": "status",
+              "fieldValue": "={{ $json.status }}"
+            }
+          ]
         }
       },
       "id": "8e8df5db-8f83-4a1d-b8d9-6c3e7f41cf7c",
@@ -169,18 +286,34 @@
       "position": [
         1530,
         300
-      ]
+      ],
+      "credentials": {
+        "supabaseApi": {
+          "id": "supabaseApi",
+          "name": "Supabase"
+        }
+      }
     },
     {
       "parameters": {
         "operation": "update",
-        "table": "campaigns",
-        "id": "={{ $('Webhook Trigger').first().json.body.campaign_id }}",
-        "columns": [
-          "ai_status"
-        ],
-        "values": {
-          "ai_status": "Completed"
+        "tableId": "campaigns",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "id",
+              "operator": "equal",
+              "keyValue": "={{ $('Webhook Trigger').first().json.body.campaign_id }}"
+            }
+          ]
+        },
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "ai_status",
+              "fieldValue": "Completed"
+            }
+          ]
         }
       },
       "id": "9e8df5db-8f83-4a1d-b8d9-6c3e7f41cf7d",
@@ -190,20 +323,38 @@
       "position": [
         1710,
         300
-      ]
+      ],
+      "credentials": {
+        "supabaseApi": {
+          "id": "supabaseApi",
+          "name": "Supabase"
+        }
+      }
     },
     {
       "parameters": {
         "operation": "update",
-        "table": "ai_jobs",
-        "id": "={{ $('Webhook Trigger').first().json.body.job_id }}",
-        "columns": [
-          "status",
-          "completed_at"
-        ],
-        "values": {
-          "status": "Completed",
-          "completed_at": "={{ new Date().toISOString() }}"
+        "tableId": "ai_jobs",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "id",
+              "operator": "equal",
+              "keyValue": "={{ $('Webhook Trigger').first().json.body.job_id }}"
+            }
+          ]
+        },
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "status",
+              "fieldValue": "Completed"
+            },
+            {
+              "fieldId": "completed_at",
+              "fieldValue": "={{ new Date().toISOString() }}"
+            }
+          ]
         }
       },
       "id": "ae8df5db-8f83-4a1d-b8d9-6c3e7f41cf7e",
@@ -213,24 +364,46 @@
       "position": [
         1890,
         300
-      ]
+      ],
+      "credentials": {
+        "supabaseApi": {
+          "id": "supabaseApi",
+          "name": "Supabase"
+        }
+      }
     },
     {
       "parameters": {
         "operation": "update",
-        "table": "workflow_logs",
-        "id": "={{ $('Webhook Trigger').first().json.body.trace_id }}",
-        "columns": [
-          "status",
-          "completed_at",
-          "execution_time_ms",
-          "output_payload"
-        ],
-        "values": {
-          "status": "Completed",
-          "completed_at": "={{ new Date().toISOString() }}",
-          "execution_time_ms": "={{ Date.now() - new Date($('Webhook Trigger').first().json.timestamp).getTime() }}",
-          "output_payload": "={{ JSON.stringify({ success: true, ai_model: 'Gemini-1.5-pro' }) }}"
+        "tableId": "workflow_logs",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "id",
+              "operator": "equal",
+              "keyValue": "={{ $json.id }}"
+            }
+          ]
+        },
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "status",
+              "fieldValue": "Completed"
+            },
+            {
+              "fieldId": "completed_at",
+              "fieldValue": "={{ new Date().toISOString() }}"
+            },
+            {
+              "fieldId": "execution_time_ms",
+              "fieldValue": "={{ Date.now() - new Date($('Fetch Workflow Log ID').first().json.started_at).getTime() }}"
+            },
+            {
+              "fieldId": "output_payload",
+              "fieldValue": "={{ JSON.stringify({ success: true, ai_model: 'Gemini-1.5-pro' }) }}"
+            }
+          ]
         }
       },
       "id": "ae8df5db-8f83-4a1d-b8d9-6c3e7f41cf8a",
@@ -238,9 +411,15 @@
       "type": "n8n-nodes-base.supabase",
       "typeVersion": 1,
       "position": [
-        2070,
+        2250,
         300
-      ]
+      ],
+      "credentials": {
+        "supabaseApi": {
+          "id": "supabaseApi",
+          "name": "Supabase"
+        }
+      }
     },
     {
       "parameters": {
@@ -253,9 +432,39 @@
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1,
       "position": [
-        2250,
+        2430,
         300
       ]
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "tableId": "workflow_logs",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "trace_id",
+              "operator": "equal",
+              "keyValue": "={{ $('Webhook Trigger').first().json.body.trace_id }}"
+            }
+          ]
+        },
+        "limit": 1
+      },
+      "id": "20a669a7-aed8-4c91-8a49-98d12ca127b7",
+      "name": "Fetch Workflow Log ID",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        2070,
+        450
+      ],
+      "credentials": {
+        "supabaseApi": {
+          "id": "supabaseApi",
+          "name": "Supabase"
+        }
+      }
     }
   ],
   "connections": {
@@ -293,6 +502,17 @@
       ]
     },
     "Gemini - Parse Brief (WF-04)": {
+      "main": [
+        [
+          {
+            "node": "Parse Gemini Response (WF-04)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Gemini Response (WF-04)": {
       "main": [
         [
           {
@@ -373,7 +593,7 @@
       "main": [
         [
           {
-            "node": "Update Workflow Log",
+            "node": "Fetch Workflow Log ID",
             "type": "main",
             "index": 0
           }
@@ -385,6 +605,17 @@
         [
           {
             "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Workflow Log ID": {
+      "main": [
+        [
+          {
+            "node": "Update Workflow Log",
             "type": "main",
             "index": 0
           }
