@@ -1571,6 +1571,12 @@ window.App = {
             <span style="color:#fff;">Campaign Brief: 'Swad Indore Launch' draft accepted.</span>
             <span style="color:var(--color-text-gray); font-size:10px;">1h ago</span>
           </div>
+        `;
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  },
   loadBrandAiMatch: async function() {
     try {
       if (!this.currentUser) return;
