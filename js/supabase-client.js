@@ -3,7 +3,7 @@ localStorage.setItem("cl_use_live", "true");
 
 window.DB = {
   // Backend URL configuration
-  backendUrl: localStorage.getItem("cl_backend_url") || ((window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1") ? "http://localhost:5000/api" : window.location.origin + "/api"),
+  backendUrl: localStorage.getItem("cl_backend_url") || ((window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1") ? "http://localhost:5000/api" : (window.location.hostname.includes("vercel.app") ? "https://creatorlens-symr.onrender.com/api" : window.location.origin + "/api")),
 
   // Check if live config is set
   isLive: function() {
