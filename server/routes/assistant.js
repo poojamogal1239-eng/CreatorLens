@@ -44,6 +44,25 @@ router.post('/chat', async (req, res, next) => {
       delete profile.creator_ai_analysis;
     }
 
+    // Sanitize narrative text fields to prevent newlines and unescaped quotes from breaking n8n JSON template substitution
+    const sanitize = (val) => {
+      if (typeof val === 'string') {
+        return val.replace(/[\r\n]+/g, ' ').replace(/"/g, '\\"');
+      }
+      if (Array.isArray(val)) {
+        return val.map(v => typeof v === 'string' ? v.replace(/[\r\n]+/g, ' ').replace(/"/g, '\\"') : v);
+      }
+      return val;
+    };
+
+    if (profile) {
+      profile.profile_summary = sanitize(profile.profile_summary);
+      profile.ai_explanation = sanitize(profile.ai_explanation);
+      profile.strengths = sanitize(profile.strengths);
+      profile.weaknesses = sanitize(profile.weaknesses);
+      profile.missing_information = sanitize(profile.missing_information);
+    }
+
     // 2. Check if N8N Webhook for Assistant is configured
     const webhookUrl = process.env.N8N_WEBHOOK_ASSISTANT;
     if (!webhookUrl) {
