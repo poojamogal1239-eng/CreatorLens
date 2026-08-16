@@ -943,6 +943,8 @@
   }
   .hero-visual {
     margin-top: 40px;
+    width: 100%;
+    box-sizing: border-box;
   }
   .sandbox-section {
     padding: 40px 20px;
@@ -1023,7 +1025,7 @@
 
 @media(max-width: 480px) {
   .story-stack-container {
-    width: 100%;
+    width: calc(100% - 40px);
     max-width: 320px;
     height: 280px;
   }
