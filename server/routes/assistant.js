@@ -10,6 +10,16 @@ router.post('/chat', async (req, res, next) => {
     return res.status(400).json({ error: 'Bad Request', message: 'Missing creator_id or message prompt.' });
   }
 
+  // Validate creator_id as UUID
+  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  if (!uuidRegex.test(creator_id)) {
+    return res.json({
+      success: false,
+      response: "Your Creator Intelligence profile hasn't been generated yet. Complete your profile and run Creator Intelligence analysis first.",
+      creator_id
+    });
+  }
+
   try {
     // 1. Fetch creator profile, scores, and analysis to send as context
     const [profileRes, scoresRes] = await Promise.all([
@@ -17,7 +27,15 @@ router.post('/chat', async (req, res, next) => {
       supabase.from('creator_scores').select('*').eq('creator_id', creator_id).single()
     ]);
 
-    const profile = profileRes.data || null;
+    if (profileRes.error || !profileRes.data || profileRes.data.ai_status !== 'Completed') {
+      return res.json({
+        success: false,
+        response: "Your Creator Intelligence profile hasn't been generated yet. Complete your profile and run Creator Intelligence analysis first.",
+        creator_id
+      });
+    }
+
+    const profile = profileRes.data;
     const scores = scoresRes.data || null;
 
     if (profile && profile.creator_ai_analysis) {

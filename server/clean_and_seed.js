@@ -24,7 +24,7 @@ const creators = [
     pricing_min: 15000,
     pricing_premium: 25000,
     profile_status: "Ready",
-    ai_status: "Not Started",
+    ai_status: "Completed",
     city: "Indore",
     state: "Madhya Pradesh",
     social_links: {
@@ -58,7 +58,7 @@ const creators = [
     pricing_min: 25000,
     pricing_premium: 45000,
     profile_status: "Ready",
-    ai_status: "Not Started",
+    ai_status: "Completed",
     city: "Indore",
     state: "Madhya Pradesh",
     social_links: {
@@ -92,7 +92,7 @@ const creators = [
     pricing_min: 18000,
     pricing_premium: 32000,
     profile_status: "Ready",
-    ai_status: "Not Started",
+    ai_status: "Completed",
     city: "Pune",
     state: "Maharashtra",
     social_links: {
@@ -124,7 +124,7 @@ const creators = [
     pricing_min: 30000,
     pricing_premium: 60000,
     profile_status: "Ready",
-    ai_status: "Not Started",
+    ai_status: "Completed",
     city: "Hyderabad",
     state: "Telangana",
     social_links: {

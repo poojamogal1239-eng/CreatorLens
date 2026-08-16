@@ -949,6 +949,13 @@
   }
   .sandbox-workspace {
     flex-direction: column;
+    width: 100% !important;
+    gap: 20px !important;
+  }
+  .sandbox-workspace > .col-4 {
+    width: 100% !important;
+    max-width: 100% !important;
+    box-sizing: border-box;
   }
   .features-grid {
     grid-template-columns: 1fr;
