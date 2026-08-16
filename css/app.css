@@ -1336,6 +1336,9 @@
   /* Mobile Sidebar responsive layout drawer */
   .app-container {
     flex-direction: column;
+    height: auto !important;
+    min-height: 100vh;
+    overflow-y: visible !important;
   }
   
   .sidebar {
@@ -1377,6 +1380,8 @@
     padding: 16px !important;
     width: 100% !important;
     box-sizing: border-box;
+    height: auto !important;
+    overflow-y: visible !important;
   }
   
   .app-top-navbar {
