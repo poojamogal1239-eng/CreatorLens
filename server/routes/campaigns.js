@@ -186,6 +186,7 @@ router.post('/:id/match', async (req, res, next) => {
     const response = await fetch(webhookUrl, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
+      signal: AbortSignal.timeout(120000), // 120s guard — prevents Render from hanging
       body: JSON.stringify({
         job_id,
         campaign_id: id,

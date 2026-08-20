@@ -1352,7 +1352,7 @@
             <select id="brand-match-campaign-select" class="input-field" style="width: 250px; margin-bottom: 0;" onchange="App.handleCampaignSelectChange(this.value)">
               <!-- Injected dynamically -->
             </select>
-            <button class="btn btn-primary" onclick="App.runBrandAiMatching()">Calculate Matches →</button>
+            <button id="brand-match-calc-btn" class="btn btn-primary" onclick="App.runBrandAiMatching()">Calculate Matches →</button>
           </div>
         </div>
 
@@ -2009,7 +2009,7 @@
                   <h4 style="margin:0; font-size:13px; color:#fff;">YouTube Creator Console</h4>
                   <p style="margin:0; font-size:11px; color:var(--color-text-gray);">Allows video analytics tracking</p>
                 </div>
-                <button class="btn btn-secondary" style="padding: 4px 10px; font-size: 11px;">Connect Channel</button>
+                <span class="tag" style="font-size: 11px; padding: 4px 10px; background: rgba(255,255,255,0.05); color: var(--color-text-gray); border: 1px solid rgba(255,255,255,0.1); border-radius: 6px;">Coming Soon</span>
               </div>
             </div>
           </div>
@@ -2240,7 +2240,7 @@
       </div>
       <div style="text-align: center; margin-top: 24px;" id="pipeline-loader-row">
         <div class="spinner" style="margin: 0 auto;"></div>
-        <p class="view-subtitle" style="margin-top: 8px;">Please wait, n8n calculations executing...</p>
+        <p class="view-subtitle" style="margin-top: 8px;">Please wait while we calculate the best creator matches for your campaign...</p>
       </div>
     </div>
   </div>

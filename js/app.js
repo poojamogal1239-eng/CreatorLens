@@ -1631,7 +1631,7 @@ window.App = {
       if (!matches || matches.length === 0) {
         container.innerHTML = `
           <div class="glass-card" style="text-align: center; padding: 40px; border: 1px dashed var(--color-border); border-radius: 8px;">
-            <p class="view-subtitle" style="margin:0;">No matching creator profiles found in registry. Click "Calculate Matches" to run n8n sourcing.</p>
+            <p class="view-subtitle" style="margin:0;">No creator matches found yet. Click "Calculate Matches" to find matching creators.</p>
           </div>
         `;
         return;
@@ -1699,14 +1699,18 @@ window.App = {
       return;
     }
 
+    // Disable button to prevent duplicate triggers
+    const calcBtn = document.getElementById("brand-match-calc-btn");
+    if (calcBtn) { calcBtn.disabled = true; calcBtn.textContent = "Finding Matches..."; }
+
     const container = document.getElementById("brand-match-results-container");
     container.innerHTML = "";
 
     try {
-      this.showPipelineProgressModal("Running Gemini AI Campaign Sourcing Matchmaker", [
-        { id: "wf04", name: "WF-04: Campaign Parse" },
-        { id: "wf05", name: "WF-05: Brand Match Engine" },
-        { id: "wf06", name: "WF-06: Pricing Recommendation Engine" }
+      this.showPipelineProgressModal("Finding the best creators for your campaign", [
+        { id: "wf04", name: "Analysing campaign brief" },
+        { id: "wf05", name: "Finding best creator matches" },
+        { id: "wf06", name: "Preparing your results" }
       ]);
 
       if (window.DB.isLive()) {
@@ -1725,11 +1729,14 @@ window.App = {
       setTimeout(async () => {
         this.closePipelineProgressModal();
         await this.displayBrandAiMatches(campaignId);
+        if (calcBtn) { calcBtn.disabled = false; calcBtn.textContent = "Calculate Matches →"; }
       }, 1000);
 
     } catch (e) {
       this.closePipelineProgressModal();
-      this.showToast("Matching pipeline failed: " + e.message, "error");
+      if (calcBtn) { calcBtn.disabled = false; calcBtn.textContent = "Calculate Matches →"; }
+      console.error("Matching pipeline error (internal):", e);
+      this.showToast("We couldn't complete the creator matching right now. Please try again.", "error");
     }
   },
 
@@ -2335,6 +2342,13 @@ window.App = {
   },
 
   openCreatorDetails: async function(creatorId, activeCampaignId = null) {
+    // Guard: only real UUIDs should reach the database
+    const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (!creatorId || !UUID_REGEX.test(creatorId)) {
+      console.warn("openCreatorDetails: invalid creator ID received:", creatorId);
+      this.showToast("We couldn't load this creator's analysis. Please try again.", "error");
+      return;
+    }
     try {
       const creator = await window.DB.getProfile(creatorId, "creator");
       if (!creator) return;
@@ -2422,7 +2436,8 @@ window.App = {
       });
       
     } catch (e) {
-      this.showToast(e.message, "error");
+      console.error("openCreatorDetails error (internal):", e);
+      this.showToast("We couldn't load this creator's analysis. Please try again.", "error");
     }
   },
 
@@ -2497,17 +2512,17 @@ window.App = {
     
     const stepsMapping = {
       // Creator Pipeline
-      "wf01": { idx: 1, state: "active", txt: "WF-01 Running" },
-      "wf02": { idx: 2, state: "active", txt: "WF-02 Running", prev: 1 },
-      "wf03": { idx: 3, state: "active", txt: "WF-03 Running", prev: 2 },
+      "wf01": { idx: 1, state: "active", txt: "Analysing profile data..." },
+      "wf02": { idx: 2, state: "active", txt: "Computing intelligence scores...", prev: 1 },
+      "wf03": { idx: 3, state: "active", txt: "Generating recommendations...", prev: 2 },
       // Campaign Pipeline
-      "wf04": { idx: 1, state: "active", txt: "WF-04 Running" },
-      "wf05": { idx: 2, state: "active", txt: "WF-05 Running", prev: 1 },
-      "wf06": { idx: 3, state: "active", txt: "WF-06 Running", prev: 2 },
+      "wf04": { idx: 1, state: "active", txt: "Analysing campaign brief..." },
+      "wf05": { idx: 2, state: "active", txt: "Finding best creator matches...", prev: 1 },
+      "wf06": { idx: 3, state: "active", txt: "Almost there — preparing results...", prev: 2 },
       
       // Completion signals
-      "complete": { idx: 3, state: "complete", txt: "Workflow Done", prev: 2 },
-      "success": { idx: 3, state: "complete", txt: "Success", prev: 2 }
+      "complete": { idx: 3, state: "complete", txt: "Matches ready!", prev: 2 },
+      "success": { idx: 3, state: "complete", txt: "Done!", prev: 2 }
     };
     
     const conf = stepsMapping[activeStepCode];

@@ -272,7 +272,7 @@ window.N8N = {
   // 2. Campaign creation pipeline (WF-04 ➔ WF-05 ➔ WF-06)
   triggerCampaignMatching: async function(campaignId, onStepUpdate) {
     if (this.isLive()) {
-      if (onStepUpdate) onStepUpdate("trigger", "Triggering Live n8n matching via Backend...");
+      if (onStepUpdate) onStepUpdate("trigger", "Starting creator matching...");
       
       try {
         const response = await fetch(`${this.backendUrl}/campaigns/${campaignId}/match`, {
@@ -287,10 +287,10 @@ window.N8N = {
         
         // Start polling for campaign matching status
         const startTime = Date.now();
-        const timeout = 60000; // 60 seconds
+        const timeout = 180000; // 180 seconds — AI matching can take 60-120s
         let currentStep = "wf04";
         
-        if (onStepUpdate) onStepUpdate("wf04", "Running WF-04: Campaign Parse...");
+        if (onStepUpdate) onStepUpdate("wf04", "Analysing campaign brief...");
         
         while (Date.now() - startTime < timeout) {
           await new Promise(r => setTimeout(r, 2000));
@@ -302,7 +302,7 @@ window.N8N = {
           const campaign = await campaignResponse.json();
           
           if (campaign.ai_status === "Completed") {
-            if (onStepUpdate) onStepUpdate("complete", "Live Campaign Sourcing Complete!");
+            if (onStepUpdate) onStepUpdate("complete", "Creator matches ready!");
             
             // Return recommendations directly
             const matchesResponse = await fetch(`${this.backendUrl}/campaigns/${campaignId}/matches`);
@@ -311,26 +311,40 @@ window.N8N = {
             }
             return [];
           } else if (campaign.ai_status === "Failed") {
-            throw new Error("n8n campaign matching workflow failed during execution.");
+            throw new Error("The creator matching process encountered an issue. Please try again.");
           }
           
-          // Visual updates
+          // Visual updates — user-friendly step progression
           const elapsed = Date.now() - startTime;
           if (elapsed > 10000 && currentStep === "wf05") {
             currentStep = "wf06";
-            if (onStepUpdate) onStepUpdate("wf06", "Running WF-06: Pricing Recommendation...");
+            if (onStepUpdate) onStepUpdate("wf06", "Almost there — preparing your results...");
           } else if (elapsed > 4000 && currentStep === "wf04") {
             currentStep = "wf05";
-            if (onStepUpdate) onStepUpdate("wf05", "Running WF-05: Brand Match Engine...");
+            if (onStepUpdate) onStepUpdate("wf05", "Finding best creator matches...");
           } else {
-            if (onStepUpdate) onStepUpdate(currentStep, `Running ${currentStep.toUpperCase()}... (${Math.round(elapsed/1000)}s)`);
+            if (onStepUpdate) onStepUpdate(currentStep, "Finding creators who best match your campaign...");
           }
         }
         
-        throw new Error("Matching workflow timed out after 60 seconds.");
+        // Final check before giving up — the workflow may have just completed
+        try {
+          const finalCheck = await fetch(`${this.backendUrl}/campaigns/${campaignId}`);
+          if (finalCheck.ok) {
+            const finalCampaign = await finalCheck.json();
+            if (finalCampaign.ai_status === "Completed") {
+              if (onStepUpdate) onStepUpdate("complete", "Creator matches ready!");
+              const matchesResponse = await fetch(`${this.backendUrl}/campaigns/${campaignId}/matches`);
+              if (matchesResponse.ok) return await matchesResponse.json();
+              return [];
+            }
+          }
+        } catch (_) { /* ignore final check errors */ }
+
+        throw new Error("We couldn't complete the creator matching right now. Please try again.");
       } catch (err) {
-        console.error("n8n campaign matching webhook error:", err);
-        if (onStepUpdate) onStepUpdate("error", "Matching error: " + err.message);
+        console.error("Campaign matching error (internal):", err);
+        if (onStepUpdate) onStepUpdate("error", "Matching could not be completed.");
         throw err;
       }
     } else {
